@@ -8,7 +8,6 @@ using Colors
 
 export mod,abs,X,Y,perlin,RGB_index,bw
 
-
 # examples:
 # w = 1080
 # l = 1800
