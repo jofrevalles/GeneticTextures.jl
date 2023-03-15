@@ -1,23 +1,9 @@
-name: CI
+name: CI GLtest
 on:
   push:
-    branches:
-      - main
-    tags: ['*']
-    paths:
-      - '**.toml'
-      - '**.jl'
-      - 'docs/*'
+    branches: [ "main" ]
   pull_request:
-    paths:
-      - '**.toml'
-      - '**.jl'
-      - 'docs/*'
-concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+    branches: [ "main" ]
 jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
