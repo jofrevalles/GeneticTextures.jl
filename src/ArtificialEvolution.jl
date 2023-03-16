@@ -2,7 +2,7 @@ module ArtificialEvolution
 
 include("RGB_index.jl")
 
-using Images, ImageView, ImageFiltering
+# using Images, ImageView, ImageFiltering
 using CoherentNoise
 using Colors
 
