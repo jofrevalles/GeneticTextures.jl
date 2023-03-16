@@ -6,61 +6,43 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-jobs:
-  test:
-    name: Tests, Julia ${{ matrix.version }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
     steps:
-      # Cancel ongoing CI test runs if pushing to branch again before the previous tests
-      # have finished
-      - name: Cancel ongoing test runs for previous commits
-        uses: styfle/cancel-workflow-action@0.11.0
-        with:
-          access_token: ${{ github.token }}
-
-      # Do tests
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-      - uses: actions/upload-artifact@v3
-        if: always()
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+      - name: Run the tests
+        id: referencetests
+        continue-on-error: true
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Comment if there are missing refimages
+        if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
+        uses: mshick/add-pr-comment@v2
         with:
-          name: test_images
-          path: test_images/
-  docs:
-    name: Build and deploy documentation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install binary dependencies
-        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
-      - uses: actions/checkout@v3
-      - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v3
-      - uses: julia-actions/setup-julia@latest
+          message: |
+            ## Missing reference images
+            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
+            Upload new reference images before merging this PR.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          version: '1'
-      - uses: julia-actions/cache@v1
-      - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
-      - name: Build and deploy
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
-        run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=monorepo
+          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          path: |
+            ./GLMakie/test/recorded_reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
