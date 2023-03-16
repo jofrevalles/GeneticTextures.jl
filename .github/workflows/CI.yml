@@ -4,41 +4,67 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: GLMakie Julia ${{ matrix.version }}
+    env:
+      MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
           - '1.8'
-          - 'nightly'
         os:
-          - ubuntu-latest
+          - ubuntu-20.04
         arch:
           - x64
     steps:
-      - name: Install binary dependencies
-        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()'
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          # dev mono repo versions
+          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          ENABLE_AQUA_TESTS: 1
+      - name: Comment if there are missing refimages
+        if: matrix.version == '1' && steps.referencetests.outputs.n_missing_refimages != '0'
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            ## Missing reference images
+            Found ${{steps.referencetests.outputs.n_missing_refimages}} new images without existing references.
+            Upload new reference images before merging this PR.
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-repeats: true
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          path: |
+            ./GLMakie/test/recorded_reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v3
+        with:
+          file: lcov.info
