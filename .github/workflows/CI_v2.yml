@@ -35,7 +35,6 @@ jobs:
           pkg"registry add https://github.com/bsc-quantic/Registry.git"
           pkg"registry add General"
       - name: Install Julia dependencies
-        shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
