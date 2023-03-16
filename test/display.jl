@@ -1,5 +1,5 @@
 using ArtificialEvolution
-using GLMakie
+using CairoMakie
 
 @testset "Display" begin
     @test true
