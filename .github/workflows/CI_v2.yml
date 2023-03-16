@@ -39,7 +39,6 @@ jobs:
           using Pkg;
           # dev mono repo versions
           pkg"dev . "
-        shell: julia {0}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
