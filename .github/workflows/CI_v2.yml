@@ -28,8 +28,9 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
         with:
-          cache-name: CI - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-          cache-compiled: true      - name: Add Julia registries
+           cache-name: CI - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+           cache-compiled: true
+      - name: Add Julia registries
         run: |
           using Pkg
           pkg"registry add https://github.com/bsc-quantic/Registry.git"
