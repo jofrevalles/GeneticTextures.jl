@@ -27,18 +27,14 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - name: Add Julia registries
+        with:
+          cache-name: CI - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+          cache-compiled: true      - name: Add Julia registries
         run: |
           using Pkg
           pkg"registry add https://github.com/bsc-quantic/Registry.git"
           pkg"registry add General"
         shell: julia {0}
-      - name: Install Julia dependencies
-        shell: julia --project=monorepo {0}
-        run: |
-          using Pkg;
-          # dev mono repo versions
-          pkg"dev . "
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
