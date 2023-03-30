@@ -1,35 +1,17 @@
-function render(expr, width, height)
-    img = Array{RGB{Float64}}(undef, height, width)
+primitives = [:+, :-, :*, :/, :^, :sin, :cos, :tan]
 
-    for y in 1:height
-        for x in 1:width
-            # Normalize coordinates to the range [0, 1]
-            nx, ny = (x - 1) / (width - 1), (y - 1) / (height - 1)
-
-            # Create an expression with the pixel coordinates as input
-            pixel_expr = substitute(expr, [:x => nx, :y => ny])
-
-            # Evaluate the expression for the current pixel
-            value = eval(pixel_expr)
-
-            # Map the result to a color (e.g., grayscale)
-            color = RGB(value, value, value)
-
-            # Set the pixel color in the image
-            img[y, x] = color
-        end
+function random_function(primitives, max_depth)
+    """
+    Function that creates random texture description functions using the primitive
+    functions and the `Expr` type. This function should take the maximum depth of the
+    expression tree as an input and return an `Expr`` object.
+    """
+    if max_depth == 0
+        return rand(0.0:0.1:1.0) # return a random constant between 0 and 1
     end
 
-    return img
-end
-
-# Replace all occurrences of a symbol in an expression with a given value
-function substitute(expr, replacements)
-    if isa(expr, Expr)
-        return Expr(expr.head, [substitute(arg, replacements) for arg in expr.args]...)
-    elseif isa(expr, Symbol) && haskey(replacements, expr)
-        return replacements[expr]
-    else
-        return expr
-    end
+    op = rand(primitives)
+    num_args = arity(op)
+    args = [random_function(primitives, max_depth - 1) for _ in 1:num_args]
+    return Expr(:call, op, args...)
 end

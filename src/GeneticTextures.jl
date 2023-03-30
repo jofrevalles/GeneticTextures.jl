@@ -1,11 +1,11 @@
-module ArtificialEvolution
+module GeneticTextures
 
 include("expressions.jl")
 
 include("renderer.jl")
 
-include("genetic_algorithm.jl")
+# include("genetic_algorithm.jl")
 
-include("user_interface.jl")
+# include("user_interface.jl")
 
 end

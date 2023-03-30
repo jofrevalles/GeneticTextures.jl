@@ -1,3 +1,5 @@
+using Images, Colors
+
 function render(expr, width, height)
     img = Array{RGB{Float64}}(undef, height, width)
 
