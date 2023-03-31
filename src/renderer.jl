@@ -50,9 +50,9 @@ function render(expr, width, height)
             # blue_value = clamp(custom_eval(blue_expr, Dict(:x => nx, :y => ny, :c => 1.0)), 0.0, 1.0)
 
             # Evaluate the expression for the current pixel using custom_eval
-            red_value = custom_eval(red_expr, Dict(:x => nx, :y => ny, :c => 0.0))
-            green_value = custom_eval(green_expr, Dict(:x => nx, :y => ny, :c => 0.5))
-            blue_value = custom_eval(blue_expr, Dict(:x => nx, :y => ny, :c => 1.0))
+            red_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => -0.5))
+            green_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5))
+            blue_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5))
 
             if red_value === NaN
                 red_value = 0.0
