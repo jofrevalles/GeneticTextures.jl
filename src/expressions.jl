@@ -66,6 +66,10 @@ function custom_eval(expr, vars)
         for arg in evaluated_args
             if isinf(arg) || isnan(arg)
                 return 0.0
+            elseif arg > 1e6
+                return 1.
+            elseif arg < -1e6
+                return -1.
             end
         end
 
