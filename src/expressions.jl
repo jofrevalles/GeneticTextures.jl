@@ -59,6 +59,13 @@ function custom_eval(expr, vars)
         args = expr.args[2:end]
         evaluated_args = custom_eval.(args, Ref(vars))
 
+        # Check for infinite values in the arguments
+        for arg in evaluated_args
+            if isinf(arg)
+                return 0.0
+            end
+        end
+
         if func == :+
             return sum(evaluated_args)
         elseif func == :-
