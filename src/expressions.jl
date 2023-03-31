@@ -1,3 +1,5 @@
+using CoherentNoise: sample, perlin_2d
+
 const primitives_with_arity = Dict(
     :+ => 2,
     :- => 2,
@@ -10,6 +12,7 @@ const primitives_with_arity = Dict(
     :abs => 1,
     :sqrt => 1,
     :mod => 2,
+    :perlin_2d => 2,
     :x => 0,
     :y => 0,
     :c => 0)
@@ -61,7 +64,7 @@ function custom_eval(expr, vars)
 
         # Check for infinite values in the arguments
         for arg in evaluated_args
-            if isinf(arg)
+            if isinf(arg) || isnan(arg)
                 return 0.0
             end
         end
@@ -88,6 +91,9 @@ function custom_eval(expr, vars)
             return sqrt(abs(evaluated_args[1]))
         elseif func == :mod
             return mod(evaluated_args[1], evaluated_args[2])
+        elseif func == :perlin_2d
+            sampler = perlin_2d()
+            return sample(sampler, evaluated_args[1], evaluated_args[2])
         else
             error("Unknown function: $func")
         end
