@@ -1,4 +1,5 @@
 using CoherentNoise: sample, perlin_2d
+using ForwardDiff: gradient
 
 const primitives_with_arity = Dict(
     :+ => 2,
@@ -13,6 +14,8 @@ const primitives_with_arity = Dict(
     :sqrt => 1,
     :mod => 2,
     :perlin_2d => 2,
+    :grad_dir => 3,  # grad_dir takes 3 arguments: the expression and the x, y coordinates
+    :atan => 2,
     :x => 0,
     :y => 0,
     :c => 0)
@@ -44,11 +47,17 @@ function random_function(primitives_with_arity, max_depth)
     end
 end
 
-
-
 function arity(f::Function)
     m = first(methods(f))
     return length(m.sig.parameters) - 2 # Subtract 1 for `typeof(f)` and 1 for `#self#`
+end
+
+function grad_dir(f, x, y)
+    """
+    Compute the gradient of f and return the direction of the gradient (in radians).
+    """
+    g = gradient(z -> f(z[1], z[2]), [x, y])
+    return atan(g[2], g[1])
 end
 
 function custom_eval(expr, vars)
@@ -98,6 +107,12 @@ function custom_eval(expr, vars)
         elseif func == :perlin_2d
             sampler = perlin_2d()
             return sample(sampler, evaluated_args[1], evaluated_args[2])
+        elseif func == :grad_dir
+            # Define a wrapper function for custom_eval to pass to grad_dir
+            wrapped_f(x, y) = custom_eval(args[1], merge(vars, Dict(:x => x, :y => y)))
+            return grad_dir(wrapped_f, evaluated_args[1], evaluated_args[2])
+        elseif func == :atan
+            return atan(evaluated_args[1], evaluated_args[2])
         else
             error("Unknown function: $func")
         end
