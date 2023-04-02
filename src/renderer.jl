@@ -1,8 +1,12 @@
 using Images, Colors
 using Base.Threads
+using CoherentNoise: perlin_2d
 
 function render(expr, width, height)
     img = Array{RGB{Float64}, 2}(undef, height, width)
+
+    # TODO: Is this the best way to do this?
+    sampler = perlin_2d() # Create a sampler for the perlin noise
 
     @threads for y in 1:height
         for x in 1:width
@@ -50,9 +54,9 @@ function render(expr, width, height)
             # blue_value = clamp(custom_eval(blue_expr, Dict(:x => nx, :y => ny, :c => 1.0)), 0.0, 1.0)
 
             # Evaluate the expression for the current pixel using custom_eval
-            red_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => -0.5))
-            green_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5))
-            blue_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5))
+            red_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => -0.5); sampler)
+            green_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.); sampler)
+            blue_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5); sampler)
 
             if red_value === NaN
                 red_value = 0.0

@@ -34,15 +34,22 @@ function random_function(primitives_with_arity, max_depth)
         # Select a random primitive function
         f = rand(keys(primitives_with_arity))
         n_args = primitives_with_arity[f]
+        # TODO: maybe disable perlin_2d or remove it from grad_dir function args
+        # TODO: check if grad_dir works properly (and if it works with perlin_2d)
 
-        # Generate random arguments recursively
-        args = [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
-
-        # Return the expression
-        if n_args > 0
-            return Expr(:call, f, args...)
+        # TODO: check if this is the best way to handle perlin_2d
+        if f == :perlin_2d
+            args = Expr(:call, f, :x, :y)
         else
-            return f
+            # Generate random arguments recursively
+            args = [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
+
+            # Return the expression
+            if n_args > 0
+                return Expr(:call, f, args...)
+            else
+                return f
+            end
         end
     end
 end
@@ -60,7 +67,7 @@ function grad_dir(f, x, y)
     return atan(g[2], g[1])
 end
 
-function custom_eval(expr, vars)
+function custom_eval(expr, vars; sampler = nothing)
     if expr isa Symbol
         return vars[expr]
     elseif expr isa Number
@@ -69,7 +76,7 @@ function custom_eval(expr, vars)
         # Assume expr is an Expr with head :call
         func = expr.args[1]
         args = expr.args[2:end]
-        evaluated_args = custom_eval.(args, Ref(vars))
+        evaluated_args = custom_eval.(args, Ref(vars); sampler)
 
         # Check for infinite values in the arguments
         for arg in evaluated_args
@@ -105,11 +112,11 @@ function custom_eval(expr, vars)
         elseif func == :mod
             return mod(evaluated_args[1], evaluated_args[2])
         elseif func == :perlin_2d
-            sampler = perlin_2d()
+            # sampler = perlin_2d()
             return sample(sampler, evaluated_args[1], evaluated_args[2])
         elseif func == :grad_dir
             # Define a wrapper function for custom_eval to pass to grad_dir
-            wrapped_f(x, y) = custom_eval(args[1], merge(vars, Dict(:x => x, :y => y)))
+            wrapped_f(x, y) = custom_eval(args[1], merge(vars, Dict(:x => x, :y => y)); sampler)
             return grad_dir(wrapped_f, evaluated_args[1], evaluated_args[2])
         elseif func == :atan
             return atan(evaluated_args[1], evaluated_args[2])
