@@ -59,6 +59,45 @@ function random_function(primitives_with_arity, max_depth)
     end
 end
 
+function random_function_v2(primitives_with_arity, max_depth; boolean_functions_depth_threshold = 1)
+    """
+    Function that creates random texture description functions using the primitive
+    functions and the `Expr` type. This function should take the maximum depth of the
+    expression tree as an input and return an `Expr`` object.
+    """
+    if max_depth == 0
+        # Select a random primitive function with arity 0 (constant or variable)
+        f = rand([k for (k, v) in primitives_with_arity if v == 0])
+        return f
+    else
+        if max_depth > boolean_functions_depth_threshold # only allow boolean functions deep in the function graph
+            available_funcs = [k for k in keys(primitives_with_arity) if k ∉ [:or, :xor, :and]]
+        else
+            available_funcs = keys(primitives_with_arity)
+        end
+
+        # Select a random primitive function
+        f = rand(available_funcs)
+        n_args = primitives_with_arity[f]
+
+        # TODO: check if this is the best way to handle perlin_2d
+        if f == :perlin_2d
+            args = Expr(:call, f, :x, :y)
+        else
+            # Generate random arguments recursively
+            args = [random_function_v2(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
+
+            # Return the expression
+            if n_args > 0
+                return Expr(:call, f, args...)
+            else
+                return f
+            end
+        end
+    end
+end
+
+
 function arity(f::Function)
     m = first(methods(f))
     return length(m.sig.parameters) - 2 # Subtract 1 for `typeof(f)` and 1 for `#self#`
