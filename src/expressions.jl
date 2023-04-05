@@ -16,6 +16,11 @@ const primitives_with_arity = Dict(
     :perlin_2d => 2,
     :grad_dir => 3,  # grad_dir takes 3 arguments: the expression and the x, y coordinates
     :atan => 2,
+    :log => 1,
+    :exp => 1,
+    :or => 2,
+    :and => 2,
+    :xor => 2,
     :x => 0,
     :y => 0,
     :c => 0)
@@ -111,6 +116,16 @@ function custom_eval(expr, vars; sampler = nothing)
             return sqrt(abs(evaluated_args[1]))
         elseif func == :mod
             return mod(evaluated_args[1], evaluated_args[2])
+        elseif func == :log
+            return log(abs(evaluated_args[1]))
+        elseif func == :exp
+            return exp(evaluated_args[1])
+        elseif func == :or
+            return Int(threshold(evaluated_args[1]) || threshold(evaluated_args[2]))
+        elseif func == :and
+            return Int(threshold(evaluated_args[1]) && threshold(evaluated_args[2]))
+        elseif func == :xor
+            return Int(xor(threshold(evaluated_args[1]), threshold(evaluated_args[2])))
         elseif func == :perlin_2d
             # sampler = perlin_2d()
             return sample(sampler, evaluated_args[1], evaluated_args[2])
@@ -124,4 +139,8 @@ function custom_eval(expr, vars; sampler = nothing)
             error("Unknown function: $func")
         end
     end
+end
+
+function threshold(x, t=0.5)
+    return x >= t ? true : false
 end
