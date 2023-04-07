@@ -77,6 +77,33 @@ function render(expr, width, height)
     return img
 end
 
+function generate_image(expr, width, height)
+    img = Array{RGB{Float64}, 2}(undef, height, width)
+
+    # TODO: Is this the best way to do this?
+    sampler = perlin_2d() # Create a sampler for the perlin noise
+
+    for y in 1:height
+        for x in 1:width
+            vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5)
+            rgb = custom_eval(expr, vars; sampler)
+
+            if rgb isa Color
+                img[y, x] = RGB(rgb.r, rgb.g, rgb.b)
+            elseif isa(rgb, Number)
+                img[y, x] = RGB(rgb, rgb, rgb)
+            else
+                error("Invalid type output from custom_eval: $(typeof(rgb))")
+            end
+        end
+    end
+
+    clean!(img)
+
+    return img
+end
+
+
 # Replace all occurrences of a symbol in an expression with a given value
 function substitute(expr::Expr, replacements::Array{Pair{Symbol, Float64}})
     if expr.head == :call
