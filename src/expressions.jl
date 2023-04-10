@@ -1,5 +1,6 @@
 using CoherentNoise: sample, perlin_2d
 using ForwardDiff: gradient
+using Base: show
 
 const primitives_with_arity = Dict(
     :+ => 2,
@@ -28,43 +29,11 @@ const primitives_with_arity = Dict(
     :rand_vector => 0
     )
 
-function random_function(primitives_with_arity, max_depth)
-    """
-    Function that creates random texture description functions using the primitive
-    functions and the `Expr` type. This function should take the maximum depth of the
-    expression tree as an input and return an `Expr`` object.
-    """
-    if max_depth == 0
-        # Select a random primitive function with arity 0 (constant or variable)
-        f = rand([k for (k, v) in primitives_with_arity if v == 0])
-        return f
-    else
-        # Select a random primitive function
-        f = rand(keys(primitives_with_arity))
-        n_args = primitives_with_arity[f]
-        # TODO: maybe disable perlin_2d or remove it from grad_dir function args
-        # TODO: check if grad_dir works properly (and if it works with perlin_2d)
-
-        # TODO: check if this is the best way to handle perlin_2d
-        if f == :perlin_2d
-            args = Expr(:call, f, :x, :y)
-        elseif f == :perlin_color
-            args = Expr(:call, f, :x, :y, rand()/5, rand()/5)
-        else
-            # Generate random arguments recursively
-            args = [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
-
-            # Return the expression
-            if n_args > 0
-                return Expr(:call, f, args...)
-            else
-                return f
-            end
-        end
-    end
+function random_expr(primitives_with_arity, max_depth; kwargs...)
+    return CustomExpr(random_function(primitives_with_arity, max_depth; kwargs...))
 end
 
-function random_function_v2(primitives_with_arity, max_depth; boolean_functions_depth_threshold = 1)
+function random_function(primitives_with_arity, max_depth; boolean_functions_depth_threshold = 1)
     """
     Function that creates random texture description functions using the primitive
     functions and the `Expr` type. This function should take the maximum depth of the
@@ -118,12 +87,12 @@ function random_function_v2(primitives_with_arity, max_depth; boolean_functions_
             return Color(rand(3))
         elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
             op = rand(keys(primitives_with_arity)) #maybe disable boolean functions here?
-            args = [op, [random_function_v2(primitives_with_arity, max_depth - 1) for _ in 2:n_args]...]
+            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 2:n_args]...]
 
             return Expr(:call, f, args...)
         else
             # Generate random arguments recursively
-            args = [random_function_v2(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
+            args = [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]
 
             # Return the expression
             if n_args > 0
@@ -149,6 +118,39 @@ function grad_dir(f, x, y)
     """
     g = gradient(z -> f(z[1], z[2]), [x, y])
     return atan(g[2], g[1])
+end
+
+struct CustomExpr
+    expr::Expr
+end
+
+function CustomExpr(x::Union{Number, Symbol})
+    return x
+end
+
+function Base.show(io::IO, c_expr::CustomExpr)
+    function short_expr(expr)
+        if expr.head == :call && length(expr.args) > 0
+            new_args = Any[]
+            for arg in expr.args
+                if arg isa Expr
+                    push!(new_args, short_expr(arg))
+                elseif arg isa Number || arg isa Color
+                    push!(new_args, round.(arg, digits=2))
+                else
+                    push!(new_args, arg)
+                end
+            end
+            return Expr(expr.head, new_args...)
+        end
+        return expr
+    end
+
+    show(io, short_expr(c_expr.expr))
+end
+
+function custom_eval(ce::CustomExpr, vars; sampler = nothing, primitives_with_arity = primitives_with_arity)
+    return custom_eval(ce.expr, vars; sampler, primitives_with_arity)
 end
 
 function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = primitives_with_arity)
