@@ -1,6 +1,7 @@
 using Base
 using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, broadcasted
 
+# TODO: Consider changing the name of Color, since it can conflict with Images.jl and Colors.jl
 mutable struct Color{T<:Real} <: AbstractArray{T, 1}
     r::T
     g::T

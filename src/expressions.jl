@@ -124,7 +124,7 @@ struct CustomExpr
     expr::Expr
 end
 
-function CustomExpr(x::Union{Number, Symbol})
+function CustomExpr(x::Union{Number, Symbol, Color})
     return x
 end
 
