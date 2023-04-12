@@ -1,81 +1,5 @@
 using Images, Colors
-using Base.Threads
 using CoherentNoise: perlin_2d
-
-function render(expr, width, height)
-    img = Array{RGB{Float64}, 2}(undef, height, width)
-
-    # TODO: Is this the best way to do this?
-    sampler = perlin_2d() # Create a sampler for the perlin noise
-
-    @threads for y in 1:height
-        for x in 1:width
-            # # Normalize coordinates to the range [0, 1]
-            # nx, ny = (x - 1) / (width - 1), (y - 1) / (height - 1)
-
-            # Normalize coordinates to the range [-0.5, 0.5]
-            nx, ny = (x - 1) / (width - 1) - 0.5, (y - 1) / (height - 1) - 0.5
-
-            # # Create an expression with the pixel coordinates as input
-            # pixel_expr = substitute(expr, [:x => nx, :y => ny])
-
-            # # Evaluate the expression for the current pixel
-            # value = eval(pixel_expr)
-
-            # # Map the result to a color (e.g., grayscale)
-            # color = RGB(value, value, value)
-
-            # # Set the pixel color in the image
-            # img[y, x] = color
-
-            # # Create an expression with the pixel coordinates as input
-            # red_expr = substitute(expr, [:x => nx, :y => ny, :c => 0.0])
-            # green_expr = substitute(expr, [:x => nx, :y => ny, :c => 0.5])
-            # blue_expr = substitute(expr, [:x => nx, :y => ny, :c => 1.0])
-
-            # # Evaluate the expression for the current pixel
-            # red_value = clamp(eval(red_expr), 0.0, 1.0)
-            # green_value = clamp(eval(green_expr), 0.0, 1.0)
-            # blue_value = clamp(eval(blue_expr), 0.0, 1.0)
-
-            # # Map the result to a color (e.g., grayscale)
-            # img[y, x] = RGB(red_value, green_value, blue_value)
-
-            # img = clean(RGB(eval(red_expr), eval(green_expr), eval(blue_expr))
-
-            # red_expr = substitute(expr, [:x => nx, :y => ny, :c => 0.0])
-            # green_expr = substitute(expr, [:x => nx, :y => ny, :c => 0.5])
-            # blue_expr = substitute(expr, [:x => nx, :y => ny, :c => 1.0])
-
-
-            # # Evaluate the expression for the current pixel using custom_eval
-            # red_value = clamp(custom_eval(red_expr, Dict(:x => nx, :y => ny, :c => 0.0)), 0.0, 1.0)
-            # green_value = clamp(custom_eval(green_expr, Dict(:x => nx, :y => ny, :c => 0.5)), 0.0, 1.0)
-            # blue_value = clamp(custom_eval(blue_expr, Dict(:x => nx, :y => ny, :c => 1.0)), 0.0, 1.0)
-
-            # Evaluate the expression for the current pixel using custom_eval
-            red_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => -0.5); sampler)
-            green_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.); sampler)
-            blue_value = custom_eval(expr, Dict(:x => nx, :y => ny, :c => 0.5); sampler)
-
-            if red_value === NaN
-                red_value = 0.0
-            end
-            if green_value === NaN
-                green_value = 0.0
-            end
-            if blue_value === NaN
-                blue_value = 0.0
-            end
-
-            # Map the result to a color (e.g., grayscale)
-            img[y, x] = RGB(red_value, green_value, blue_value)
-        end
-    end
-    clean!(img)
-
-    return img
-end
 
 function generate_image(expr, width, height)
     img = Array{RGB{Float64}, 2}(undef, height, width)
@@ -103,46 +27,6 @@ function generate_image(expr, width, height)
     return img
 end
 
-
-# Replace all occurrences of a symbol in an expression with a given value
-function substitute(expr::Expr, replacements::Array{Pair{Symbol, Float64}})
-    if expr.head == :call
-        # Apply substitutions recursively to the arguments of the function call
-        new_args = [substitute(arg, replacements) for arg in expr.args[2:end]]
-        return Expr(:call, expr.args[1], new_args...)
-    elseif expr.head == :f
-        # Return the symbol if it is not being replaced
-        return expr
-    elseif expr.head == :sym
-        # Replace the symbol with its corresponding value, if present in the replacements array
-        for (sym, value) in replacements
-            if expr.value == sym
-                return value
-            end
-        end
-        return expr.value
-    else
-        throw(ArgumentError("Invalid expression type: $(expr.head)"))
-    end
-end
-
-function substitute(sym::Symbol, replacements::Array{Pair{Symbol, Float64}})
-    for (key, value) in replacements
-        if sym == key
-            return value
-        end
-    end
-    return sym
-end
-
-function save_population(population, generation, width, height)
-    for (i, expr) in enumerate(population)
-        img = render(expr, width, height)
-        filename = "gen_$(generation)_img_$(i).png"
-        save(filename, img)
-    end
-end
-
 function clean!(img)
     # normalize img to be in [0, 1]
     min_r, max_r = extrema((p -> (p.r)).(img))
@@ -160,4 +44,27 @@ function clean!(img)
     end
 
     return img
+end
+
+function save_image_and_expr(img::Matrix{T}, custom_expr::CustomExpr; folder = "saves", prefix = "images") where {T}
+    # Create the folder if it doesn't exist
+    if !isdir(folder)
+        mkdir(folder)
+    end
+
+    # Generate a unique filename
+    filename = generate_unique_filename(folder, prefix)
+
+    # Save the image to a file
+    image_file = folder * "/" * filename * ".png"
+    save(image_file, img)
+
+    # Save the expression to a file
+    expr_file = folder * "/" * filename * ".txt"
+    open(expr_file, "w") do f
+        write(f, string(custom_expr))
+    end
+
+    println("Image saved to: $image_file")
+    println("Expression saved to: $expr_file")
 end
