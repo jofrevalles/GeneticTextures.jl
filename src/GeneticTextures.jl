@@ -1,17 +1,18 @@
 module GeneticTextures
 
+include("Utils.jl")
+
 include("Color.jl")
 export Color, ColorStyle
 
-include("expressions.jl")
+include("Expressions.jl")
 export primitives_with_arity, random_expr, custom_eval, grad_dir
 
-include("renderer.jl")
+include("Renderer.jl")
 export render, substitute, save_population, generate_image
 
+# include("Genetic.jl")
 
-# include("genetic_algorithm.jl")
-
-# include("user_interface.jl")
+# include("User.jl")
 
 end
