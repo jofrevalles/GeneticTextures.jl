@@ -1,6 +1,7 @@
 using CoherentNoise: sample, perlin_2d
 using ForwardDiff: gradient
 using Base: show
+using FilePathsBase: /
 
 const primitives_with_arity = Dict(
     :+ => 2,
@@ -102,12 +103,6 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             end
         end
     end
-end
-
-
-function arity(f::Function)
-    m = first(methods(f))
-    return length(m.sig.parameters) - 2 # Subtract 1 for `typeof(f)` and 1 for `#self#`
 end
 
 # TODO: Modify `grad_dir` so it can take functions that have different
@@ -251,7 +246,7 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
     end
 end
 
-function threshold(x, t=0.5)
+function threshold(x, t = 0.5)
     return x >= t ? true : false
 end
 
@@ -259,4 +254,28 @@ function apply_elementwise(op, args...)
     is_color = any(x -> x isa Color, args)
     result = op.(args...)
     return is_color ? Color(result) : result
+end
+
+
+function save_image_and_expr(custom_expr::CustomExpr, filename::AbstractString; img_size = (512, 512), folder="saves")
+    # Create the folder if it doesn't exist
+    if !isdir(folder)
+        mkdir(folder)
+    end
+
+    # Evaluate the expression to generate an image
+    img = generate_image(custom_expr, img_size...)
+
+    # Save the image to a file
+    image_file = folder / (filename * ".png")
+    save(image_file, img)
+
+    # Save the expression to a file
+    expr_file = folder / (filename * ".txt")
+    open(expr_file, "w") do f
+        write(f, string(custom_expr))
+    end
+
+    println("Image saved to: $image_file")
+    println("Expression saved to: $expr_file")
 end
