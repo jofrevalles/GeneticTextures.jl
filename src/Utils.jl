@@ -1,8 +1,8 @@
-function generate_unique_filename(folder::String, prefix::String, extension::String)
-    existing_files = readdir(folder)
+function generate_unique_filename(folder::String, prefix::String, extension = "")
+    existing_files = readdir(folder) .|> x ->  x[begin:findlast(isequal('.'),x)-1]
     counter = 1
     while true
-        filename = "$prefix$counter.$extension"
+        extension == "" ? filename = "$prefix$counter" : filename = "$prefix$counter.$extension"
         if filename ∉ existing_files
             return filename
         end

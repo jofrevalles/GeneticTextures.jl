@@ -256,22 +256,21 @@ function apply_elementwise(op, args...)
     return is_color ? Color(result) : result
 end
 
-
-function save_image_and_expr(custom_expr::CustomExpr, filename::AbstractString; img_size = (512, 512), folder="saves")
+function save_image_and_expr(img::Matrix{T}, custom_expr::CustomExpr; folder = "saves", prefix = "images") where {T}
     # Create the folder if it doesn't exist
     if !isdir(folder)
         mkdir(folder)
     end
 
-    # Evaluate the expression to generate an image
-    img = generate_image(custom_expr, img_size...)
+    # Generate a unique filename
+    filename = generate_unique_filename(folder, prefix)
 
     # Save the image to a file
-    image_file = folder / (filename * ".png")
+    image_file = folder * "/" * filename * ".png"
     save(image_file, img)
 
     # Save the expression to a file
-    expr_file = folder / (filename * ".txt")
+    expr_file = folder * "/" * filename * ".txt"
     open(expr_file, "w") do f
         write(f, string(custom_expr))
     end
