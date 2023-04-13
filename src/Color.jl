@@ -79,3 +79,7 @@ function Base.iterate(c::Color, state::Int=1)
         return (c[state], state + 1)
     end
 end
+
+function Base.show(io::IO, c::Color)
+    print(io, "Color(", round(c.r, digits=2), ", ", round(c.g, digits=2), ", ", round(c.b, digits=2), ")")
+end
