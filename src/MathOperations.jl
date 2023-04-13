@@ -1,7 +1,7 @@
 using ForwardDiff: gradient
 
 function threshold(x, t = 0.5)
-    return x >= t ? true : false
+    return x >= t ? 1 : 0
 end
 
 function apply_elementwise(op, args...)
