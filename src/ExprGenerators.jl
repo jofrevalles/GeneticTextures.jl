@@ -22,7 +22,7 @@ const primitives_with_arity = Dict(
     :x => 0,
     :y => 0,
     :rand_scalar => 0,
-    :rand_vector => 0
+    :rand_color => 0
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)
@@ -41,7 +41,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
 
         if f == :rand_scalar
             return rand()
-        elseif f == :rand_vector
+        elseif f == :rand_color
             return Color(rand(3))
         else
             return f
@@ -79,7 +79,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             # args = [:x, :y, rand()/5, rand()/5]
         elseif f == :rand_scalar
             return rand()
-        elseif f == :rand_vector
+        elseif f == :rand_color
             return Color(rand(3))
         elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
             op = rand(keys(primitives_with_arity)) #maybe disable boolean functions here?
