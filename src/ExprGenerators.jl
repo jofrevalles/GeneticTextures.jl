@@ -62,21 +62,22 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
 
         # TODO: check if this is the best way to handle perlin_2d
         if f == :perlin_2d
-            args = Expr(:call, f, :x, :y)
-            # f = :perlin_2d
-            # n_args = 2
-            # args = [:x, :y]
-        elseif f == :perlin_color # TODO: maybe we would like to disable this part
-            args = Expr(:call, f, :x, :y, rand()/4, rand()/4, rand()/4)
+            limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
-            # TODO: change this so it just has arguments that are not of type `Color`anyomore
-            # Maybe we can remove that from the `primitives_with_arity` dict
-            # Also maybe we can test if we want low depth of other functions inside this arguments
+            args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args]
 
-            # available_funcs = [k for k in keys(primitives_with_arity) if k ∉ [:perlin_color, :rand_color]]
-            # f = :perlin_color
-            # n_args = 4
-            # args = [:x, :y, rand()/5, rand()/5]
+            return Expr(:call, f, args...)
+        elseif f == :perlin_color
+            limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
+
+            primitives_without_color = copy(primitives_with_arity)
+            delete!(primitives_without_color, :perlin_color)
+            delete!(primitives_without_color, :rand_color)
+
+            arg1 = random_function(primitives_without_color, limited_depth - 1)
+            arg2 = random_function(primitives_without_color, limited_depth - 1)
+
+            args = Expr(:call, f, arg1, arg2, Color(rand(3)))
         elseif f == :rand_scalar
             return rand()
         elseif f == :rand_color

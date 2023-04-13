@@ -5,6 +5,7 @@ function generate_image(expr, width, height)
     img = Array{RGB{Float64}, 2}(undef, height, width)
 
     # TODO: Is this the best way to do this?
+    # I don't think it is since we may want to have a different number of samplers
     sampler = perlin_2d() # Create a sampler for the perlin noise
 
     for y in 1:height

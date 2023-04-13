@@ -5,6 +5,7 @@ include("Utils.jl")
 include("Color.jl")
 export Color, ColorStyle
 
+include("PerlinBroadcasting.jl")
 include("CustomExpr.jl")
 include("ExprGenerators.jl")
 export primitives_with_arity, random_expr

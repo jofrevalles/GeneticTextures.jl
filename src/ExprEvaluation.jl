@@ -68,23 +68,16 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
         elseif func == :exp
             return exp.(evaluated_args[1])
         elseif func == :or
-            return apply_elementwise((x, y) -> x | y, threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
+            return apply_elementwise((x, y) -> convert(Float64, x | y), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
         elseif func == :and
-            return apply_elementwise((x, y) -> x & y, threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
+            return apply_elementwise((x, y) -> convert(Float64, x & y), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
         elseif func == :xor
-            return apply_elementwise((x, y) -> xor(x, y), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
+            return apply_elementwise((x, y) -> convert(Float64, xor(x, y)), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
         elseif func == :perlin_2d
-            # sampler = perlin_2d()
-            return sample(sampler, evaluated_args[1], evaluated_args[2])
+            return sample.(sampler, evaluated_args[1], evaluated_args[2])
         elseif func == :perlin_color
-            # sampler = perlin_3d()
-            offset_1 = evaluated_args[3]
-            offset_2 = evaluated_args[4]
-            offset_3 = evaluated_args[5]
-            r = sample(sampler, evaluated_args[1]+offset_1, evaluated_args[2]+offset_1)
-            g = sample(sampler, evaluated_args[1]+offset_2, evaluated_args[2]+offset_1)
-            b = sample(sampler, evaluated_args[1]+offset_3, evaluated_args[2]+offset_3)
-            return Color(r, g, b)
+            offset = evaluated_args[3]
+            return sample.(sampler, evaluated_args[1] .+ offset, evaluated_args[2] .+ offset)
         elseif func == :grad_dir
             # TODO: Modify condition so it can take functions that have different
             #       number of arguments (not just 2)
@@ -101,3 +94,4 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
         end
     end
 end
+
