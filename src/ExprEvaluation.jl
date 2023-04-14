@@ -79,12 +79,13 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
             offset = evaluated_args[3]
             return sample.(sampler, evaluated_args[1] .+ offset, evaluated_args[2] .+ offset)
         elseif func == :grad_dir
-            # TODO: Modify condition so it can take functions that have different
-            #       number of arguments (not just 2)
-
-            # Define a wrapper function for custom_eval to pass to grad_dir
-            wrapped_f(x, y) = custom_eval(args[1], vars; sampler)
-            return grad_dir.(getfield(Main, args[1]), evaluated_args[2], evaluated_args[3])
+            if primitives_with_arity[args[1]] == 1
+                return grad_dir.(getfield(Main, args[1]), evaluated_args[2])
+            elseif primitives_with_arity[args[1]] == 2
+                return grad_dir.(getfield(Main, args[1]), evaluated_args[2], evaluated_args[3])
+            else
+                error("Invalid number of arguments for grad_dir")
+            end
         elseif func == :atan
             return atan.(evaluated_args[1], evaluated_args[2])
         elseif func == :Color

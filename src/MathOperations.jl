@@ -1,4 +1,4 @@
-using ForwardDiff: gradient
+using ForwardDiff: gradient, derivative
 
 function threshold(x, t = 0.5)
     return x >= t ? 1 : 0
@@ -10,12 +10,24 @@ function apply_elementwise(op, args...)
     return is_color ? Color(result) : result
 end
 
-# TODO: Modify `grad_dir` so it can take functions that have different
-#       number of arguments (not just 2)
 function grad_dir(f, x, y)
     """
     Compute the gradient of f and return the direction of the gradient (in radians).
     """
     g = gradient(z -> f(z[1], z[2]), [x, y])
     return atan(g[2], g[1])
+end
+
+function grad_dir(f, x)
+    """
+    Compute the derivative of f and return the derivative
+    """
+    if f == log
+        f = x -> log(abs(x))
+    elseif f == sqrt
+        f = x -> sqrt(abs(x))
+    end
+
+    g = derivative(f, x)
+    return g[1]
 end

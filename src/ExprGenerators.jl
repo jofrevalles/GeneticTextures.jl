@@ -11,7 +11,7 @@ const primitives_with_arity = Dict(
     :sqrt => 1,
     :mod => 2,
     :perlin_2d => 2,
-    :perlin_color => 4,
+    :perlin_color => 3,
     :grad_dir => 3, # grad_dir takes 3 arguments: the expression and the x, y coordinates
     :atan => 2,
     :log => 1,
@@ -83,8 +83,10 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         elseif f == :rand_color
             return Color(rand(3))
         elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
-            op = rand(keys(primitives_with_arity)) #maybe disable boolean functions here?
-            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 2:n_args]...]
+            op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d], collect(primitives_with_arity)))) #maybe disable boolean functions here?
+            n_args = primitives_with_arity[op]
+
+            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
 
             return Expr(:call, f, args...)
         else
