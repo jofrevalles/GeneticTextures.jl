@@ -88,6 +88,8 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
             end
         elseif func == :atan
             return atan.(evaluated_args[1], evaluated_args[2])
+        elseif func == :dissolve
+            return dissolve.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
         elseif func == :Color
             return Color(evaluated_args...)
         else

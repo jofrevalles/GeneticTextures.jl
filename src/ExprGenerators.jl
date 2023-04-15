@@ -22,7 +22,8 @@ const primitives_with_arity = Dict(
     :x => 0,
     :y => 0,
     :rand_scalar => 0,
-    :rand_color => 0
+    :rand_color => 0,
+    :dissolve => 3
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)

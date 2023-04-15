@@ -31,3 +31,7 @@ function grad_dir(f, x)
     g = derivative(f, x)
     return g[1]
 end
+
+function dissolve(f1, f2, weight)
+    return weight * f1 + (1 - weight) * f2
+end
