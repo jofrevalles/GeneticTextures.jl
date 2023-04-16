@@ -10,9 +10,9 @@ const primitives_with_arity = Dict(
     :abs => 1,
     :sqrt => 1,
     :mod => 2,
-    :perlin_2d => 2,
-    :perlin_color => 3,
-    :grad_dir => 3, # grad_dir takes 3 arguments: the expression and the x, y coordinates
+    :perlin_2d => 3,
+    :perlin_color => 4,
+    :grad_dir => 1, # grad_dir takes 1 argument, but it can be a function with 1 or 2 arguments
     :atan => 2,
     :log => 1,
     :exp => 1,
@@ -66,7 +66,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             seed = round(rand() * 100, digits=4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
-            args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args]
+            args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args-1]
 
             return Expr(:call, f, seed, args...)
         elseif f == :perlin_color
