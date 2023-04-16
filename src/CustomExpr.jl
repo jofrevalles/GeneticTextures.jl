@@ -16,7 +16,7 @@ function Base.show(io::IO, c_expr::CustomExpr)
                 if arg isa Expr
                     push!(new_args, short_expr(arg))
                 elseif arg isa Number || arg isa Color
-                    push!(new_args, round.(arg, digits=2))
+                    push!(new_args, round.(arg, digits=4))
                 else
                     push!(new_args, arg)
                 end
