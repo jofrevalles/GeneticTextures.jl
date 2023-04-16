@@ -1,10 +1,10 @@
 using CoherentNoise: sample, perlin_2d
 
-function custom_eval(ce::CustomExpr, vars; sampler = nothing, primitives_with_arity = primitives_with_arity)
-    return custom_eval(ce.expr, vars; sampler, primitives_with_arity)
+function custom_eval(ce::CustomExpr, vars; samplers = Dict(), primitives_with_arity = primitives_with_arity)
+    return custom_eval(ce.expr, vars; samplers, primitives_with_arity)
 end
 
-function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = primitives_with_arity)
+function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = primitives_with_arity, )
     if expr isa Symbol
         if primitives_with_arity[expr] == 0
             return vars[expr]
@@ -18,7 +18,7 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
         # Assume expr is an Expr with head :call
         func = expr.args[1]
         args = expr.args[2:end]
-        evaluated_args = custom_eval.(args, Ref(vars); sampler)
+        evaluated_args = custom_eval.(args, Ref(vars); samplers)
 
         # Check for infinite values in the arguments
         for i in eachindex(evaluated_args)
@@ -73,11 +73,20 @@ function custom_eval(expr, vars; sampler = nothing, primitives_with_arity = prim
             return apply_elementwise((x, y) -> convert(Float64, x & y), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
         elseif func == :xor
             return apply_elementwise((x, y) -> convert(Float64, xor(x, y)), threshold.(evaluated_args[1]), threshold.(evaluated_args[2]))
-        elseif func == :perlin_2d
-            return sample.(sampler, evaluated_args[1], evaluated_args[2])
-        elseif func == :perlin_color
-            offset = evaluated_args[3]
-            return sample.(sampler, evaluated_args[1] .+ offset, evaluated_args[2] .+ offset)
+        elseif func == :perlin_2d || func == :perlin_color
+            seed = expr.args[2]
+            if !haskey(samplers, seed)
+                samplers[seed] = perlin_2d(seed=hash(seed))
+            end
+            sampler = samplers[seed]
+            noise_args = evaluated_args[2:end]
+
+            if func == :perlin_2d
+                return sample.(sampler, noise_args[1], noise_args[2])
+            else
+                offset = noise_args[3]
+                return sample.(sampler, noise_args[1] .+ offset, noise_args[2] .+ offset)
+            end
         elseif func == :grad_dir
             if primitives_with_arity[args[1]] == 1
                 return grad_dir.(getfield(Main, args[1]), evaluated_args[2])

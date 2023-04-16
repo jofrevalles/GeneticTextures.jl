@@ -4,14 +4,10 @@ using CoherentNoise: perlin_2d
 function generate_image(expr, width, height)
     img = Array{RGB{Float64}, 2}(undef, height, width)
 
-    # TODO: Is this the best way to do this?
-    # I don't think it is since we may want to have a different number of samplers
-    sampler = perlin_2d() # Create a sampler for the perlin noise
-
     for y in 1:height
         for x in 1:width
             vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5)
-            rgb = custom_eval(expr, vars; sampler)
+            rgb = custom_eval(expr, vars)
 
             if rgb isa Color
                 img[y, x] = RGB(rgb.r, rgb.g, rgb.b)

@@ -63,12 +63,14 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
 
         # TODO: check if this is the best way to handle perlin_2d
         if f == :perlin_2d
+            seed = round(rand() * 100, digits=4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
             args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args]
 
-            return Expr(:call, f, args...)
+            return Expr(:call, f, seed, args...)
         elseif f == :perlin_color
+            seed = round(rand() * 100, digits=4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
             primitives_without_color = copy(primitives_with_arity)
@@ -78,7 +80,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             arg1 = random_function(primitives_without_color, limited_depth - 1)
             arg2 = random_function(primitives_without_color, limited_depth - 1)
 
-            args = Expr(:call, f, arg1, arg2, Color(rand(3)))
+            args = Expr(:call, f, seed, arg1, arg2, Color(rand(3)))
         elseif f == :rand_scalar
             return rand()
         elseif f == :rand_color
