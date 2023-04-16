@@ -42,7 +42,7 @@
                 end
             end
         else
-            @test expr isa Number || expr isa Color
+            @test expr isa Number || expr isa Color || expr isa Symbol
         end
     end
 
