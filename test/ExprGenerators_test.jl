@@ -46,19 +46,6 @@
         end
     end
 
-    function depth_of_expr(expr)
-        if expr isa Expr
-            max_child_depth = 0
-            for arg in expr.args[2:end]
-                child_depth = depth_of_expr(arg)
-                max_child_depth = max(max_child_depth, child_depth)
-            end
-            return 1 + max_child_depth
-        else
-            return 0 # If the input is not an Expr (i.e., a Number, Color, or Symbol), return 0 as the depth
-        end
-    end
-
     @testset "random_function" begin
         for _ in 1:6
             expr = random_function(primitives_with_arity, max_depth)
