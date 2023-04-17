@@ -24,19 +24,22 @@ function generate_image(expr, width, height)
     return img
 end
 
+# TODO: Maybe normalize each channel separately?
 function clean!(img)
     # normalize img to be in [0, 1]
-    min_r, max_r = extrema((p -> (p.r)).(img))
-    min_g, max_g = extrema((p -> (p.g)).(img))
-    min_b, max_b = extrema((p -> (p.b)).(img))
-
-    min_val, max_val = min(min_r, min_g, min_b), max(max_r, max_g, max_b)
+    (min_val, _), (_, max_val) = extrema((p -> (min(p.r, p.g, p.b), max(p.r, p.g, p.b))).(img))
 
     for y in 1:size(img, 1)
         for x in 1:size(img, 2)
-            img[y, x] = RGB((img[y, x].r - min_val) / (max_val - min_val),
-                            (img[y, x].g - min_val) / (max_val - min_val),
-                            (img[y, x].b - min_val) / (max_val - min_val))
+            r, g, b = img[y, x].r, img[y, x].g, img[y, x].b
+
+            # Normalize the values
+            r = (r - min_val) / (max_val - min_val)
+            g = (g - min_val) / (max_val - min_val)
+            b = (b - min_val) / (max_val - min_val)
+
+            # Replace NaN values with 0.0
+            img[y, x] = RGB(isnan(r) ? 0.0 : r, isnan(g) ? 0.0 : g, isnan(b) ? 0.0 : b)
         end
     end
 
