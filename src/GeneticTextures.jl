@@ -21,6 +21,7 @@ export generate_image, save_image_and_expr
 include("Genetic.jl")
 export mutate, mutate!
 
-# include("User.jl")
+include("UI.jl")
+export generate_population, display_images, get_user_choice, create_variations
 
 end

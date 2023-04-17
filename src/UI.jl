@@ -72,7 +72,7 @@ population, images = create_variations(1, original_population, mutation_probs, p
 display_images(original_image[1], images)
 println("Original population: $original_population")
 
-let population = population
+let population = population, images = images
     while true
         best_choice = get_user_choice(n)
         println("Chosen Image: $(population[best_choice])")
