@@ -1,5 +1,5 @@
 @testset "ExprGenerators" begin
-    using GeneticTextures: CustomExpr, random_expr, random_function, grad_dir, primitives_with_arity
+    using GeneticTextures: CustomExpr, random_expr, random_function, grad_dir, primitives_with_arity, depth_of_expr
     max_depth = 5
 
     @testset "random_expr" begin

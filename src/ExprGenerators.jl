@@ -73,14 +73,9 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             seed = round(rand() * 100, digits=4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
-            primitives_without_color = copy(primitives_with_arity)
-            delete!(primitives_without_color, :perlin_color)
-            delete!(primitives_without_color, :rand_color)
+            args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args-2]
 
-            arg1 = random_function(primitives_without_color, limited_depth - 1)
-            arg2 = random_function(primitives_without_color, limited_depth - 1)
-
-            args = Expr(:call, f, seed, arg1, arg2, Color(rand(3)))
+            return Expr(:call, f, seed, args..., Color(rand(3)))
         elseif f == :rand_scalar
             return rand()
         elseif f == :rand_color
@@ -103,5 +98,18 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
                 return f
             end
         end
+    end
+end
+
+function depth_of_expr(expr)
+    if expr isa Expr
+        max_child_depth = 0
+        for arg in expr.args[2:end]
+            child_depth = depth_of_expr(arg)
+            max_child_depth = max(max_child_depth, child_depth)
+        end
+        return 1 + max_child_depth
+    else
+        return 0 # If the input is not an Expr (i.e., a Number, Color, or Symbol), return 0 as the depth
     end
 end
