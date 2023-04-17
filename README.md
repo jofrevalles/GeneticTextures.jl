@@ -2,8 +2,8 @@
 
 The aim of `GeneticTextures.jl` is to recreate Artificial Evolution for Computer Graphics (https://dl.acm.org/doi/pdf/10.1145/127719.122752) using Julia programming language. The package provides an interactive way to evolve textures using genetic programming techniques.
 
-![example1](https://github.com/jofrevalles/GeneticTextures.jl/example/images/example1.png)
-![example2](https://github.com/jofrevalles/GeneticTextures.jl/example/images/example2.png)
+![example1](./images/example1.png)
+![example2](./images/example2.png)
 
 ## Installation
 
@@ -54,11 +54,11 @@ let population = population, images = images
     end
 end
 ```
-![UI-example](https://github.com/jofrevalles/GeneticTextures.jl/example/images/UI_example.png)
+![UI-example](./images/UI_example.png)
 
 ## Examples
 Here are some examples of textures generated with GeneticTextures.jl:
 
 
-![example1](https://github.com/jofrevalles/GeneticTextures.jl/example/images/example1.png)
-![example2](https://github.com/jofrevalles/GeneticTextures.jl/example/images/example2.png)
+![example1](./images/example1.png)
+![example2](./images/example2.png)
