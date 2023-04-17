@@ -19,6 +19,7 @@ include("Renderer.jl")
 export generate_image, save_image_and_expr
 
 include("Genetic.jl")
+export mutate, mutate!
 
 # include("User.jl")
 
