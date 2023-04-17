@@ -18,7 +18,7 @@ export custom_eval
 include("Renderer.jl")
 export generate_image, save_image_and_expr
 
-# include("Genetic.jl")
+include("Genetic.jl")
 
 # include("User.jl")
 
