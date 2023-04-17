@@ -1,9 +1,11 @@
 # GeneticTextures.jl
 
-The aim of `GeneticTextures.jl` is to recreate Artificial Evolution for Computer Graphics (https://dl.acm.org/doi/pdf/10.1145/127719.122752) using Julia programming language. The package provides an interactive way to evolve textures using genetic programming techniques.
+`GeneticTextures.jl` is a Julia package inspired by the paper [Artificial Evolution for Computer Graphics](https://dl.acm.org/doi/pdf/10.1145/127719.122752). It allows you to interactively evolve textures using genetic programming techniques, bringing the power of evolutionary algorithms to the world of computer graphics.
 
-![example1](./images/example1.png)
-![example2](./images/example2.png)
+<div style="text-align: center;">
+    <img src="./images/example1.png" alt="Example 1" style="display: inline-block; margin: 0 5px;" />
+    <img src="./images/example2.png" alt="Example 2" style="display: inline-block; margin: 0 5px;" />
+</div>
 
 ## Installation
 
@@ -54,11 +56,14 @@ let population = population, images = images
     end
 end
 ```
-![UI-example](./images/UI_example.png)
+<div style="text-align: center;">
+    <img src="./images/UI_example.png" alt="UI-example" />
+</div>
 
 ## Examples
 Here are some examples of textures generated with GeneticTextures.jl:
 
-
-![example1](./images/example1.png)
-![example2](./images/example2.png)
+<div style="text-align: center;">
+    <img src="./images/example1.png" alt="Example 1" style="display: inline-block; margin: 0 5px;" />
+    <img src="./images/example2.png" alt="Example 2" style="display: inline-block; margin: 0 5px;" />
+</div>
