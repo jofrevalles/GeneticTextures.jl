@@ -3,15 +3,14 @@ function update_parent_expr!(parent::Expr, idx::Int, new_expr)
     return parent
 end
 
-function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr, Nothing}=nothing, idx::Int=0)
-    # TODO: if mutation_probs is large, maybe apply a depth_factor to the probabilities
-    #       so that deeper expressions are less likely to be mutated so
-    #       that the tree doesn't get too big and find recursive problems
+function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr, Nothing}=nothing, idx::Int=0, max_mutations::Int=5)
+    if max_mutations <= 0
+        return expr
+    end
 
     mutated = false
-    # Mutation type 1: mutate node into a new random expression
-    if rand() < mutation_probs[:new_rand_expr]
-        println("Mutation type 1")
+    # Mutation type 1: any node can mutate into a new random expression
+    if rand() < mutation_probs[:rand_expr]
         f =  random_function(primitives_with_arity, depth_of_expr(expr))
 
         if parent !== nothing
@@ -23,21 +22,18 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
         end
     end
 
-    # Mutation type 2: adjust scalar value (constant)
+    # Mutation type 2: adjust scalar value (constant) by adding a random amount
     if expr isa Number && rand() < mutation_probs[:adjust_scalar]
-        println("Mutation type 2")
         expr += randn() * 0.1
     end
 
-    # Mutation type 3: adjust vector value (color)
+    # Mutation type 3: adjust vector value (color) by adding random amounts to each element
     if expr isa Color && rand() < mutation_probs[:adjust_color]
-        println("Mutation type 3")
         expr += randn(3) * 0.1
     end
 
-    # Mutation type 4: mutate function into a different function
-    if expr isa Expr && rand() < mutation_probs[:change_func]
-        println("Mutation type 4")
+    # Mutation type 4: mutate function into a different function, adjusting arguments as necessary
+    if expr isa Expr && rand() < mutation_probs[:rand_func]
         prim_keys = collect(keys(primitives_with_arity))
         compatible_primitives = filter(p -> primitives_with_arity[p] == length(expr.args) - 1, prim_keys)
 
@@ -55,9 +51,8 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
         end
     end
 
-    # Mutation type 5: make a node the argument of a new random function
-    if rand() < mutation_probs[:add_branch] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2))
-        println("Mutation type 5")
+    # Mutation type 5: make a node the argument of a new random function, generating other arguments randomly if necessary
+    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2))
 
         # Select a random function from the primitives
         compatible_primitives = filter(p -> primitives_with_arity[p] > 0, collect(keys(primitives_with_arity)))
@@ -66,7 +61,6 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
         # Get the arity of the selected function
         n_args = primitives_with_arity[new_func]
 
-        println("New function: $new_func, arity: $n_args")
         if new_func == :perlin_2d || new_func == :perlin_color
             seed = round(rand() * 100, digits=4)
             args = Vector{Any}(undef, n_args-2)
@@ -89,49 +83,56 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
             for i in 1:(n_args-1)
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
-            println("args: $args")
-            println("expr: $expr")
 
             insert!(args, rand(1:n_args), expr)
-            println("args after insert: $args")
 
             expr = Expr(:call, new_func, args...)
         end
     end
 
-    if expr isa Expr
-        # Mutation type 6: remove an expression from its parent function
-        if rand() < mutation_probs[:delete_branch]
-            println("Mutation type 6")
-            pos = rand(1:length(expr.args))
-            expr.args = filter(i -> i != pos, expr.args)
+    # Mutation type 6: remove an expression from its parent function (inverse of mutation type 5)
+    if expr isa Expr && rand() < mutation_probs[:become_argument]
+        if expr.args[1] == :grad_dir || expr.args[1] == :perlin_2d || expr.args[1] == :perlin_color
+            pos = rand(3:length(expr.args)) # Exclude the first argument
+        else
+            pos = rand(2:length(expr.args)) # Start from 2 because the function itself is at index 1
         end
+        new_expr = expr.args[pos]
 
-        # Mutation type 7: duplicate a node within the expression
-        if rand() < mutation_probs[:duplicate_branch]
-            println("Mutation type 7")
-            source_pos = rand(1:length(expr.args))
-            target_pos = rand(1:length(expr.args))
-            expr.args[target_pos] = deepcopy(expr.args[source_pos])
+        if parent !== nothing
+            parent = update_parent_expr!(parent, idx, new_expr)
+            mutated = true
+            return new_expr
+        else
+            expr = new_expr
         end
+    end
 
-        # Recursively mutate child nodes
-        if !mutated
-            for i in 2:length(expr.args) # Start from 2 because the function itself is at index 1
-                expr.args[i] = mutate!(expr.args[i], mutation_probs, primitives_with_arity, expr, i)
-            end
+    # Mutation type 7: duplicate a node within the expression (like mating an expression with itself)
+    if rand() < mutation_probs[:duplicate_node] && parent !== nothing
+        target_pos = rand(2:length(parent.args))
+        if idx != target_pos
+            parent = update_parent_expr!(parent, target_pos, deepcopy(expr))
+            mutated = true
+        end
+    end
+
+    # Recursively mutate child nodes
+    if !mutated && expr isa Expr
+        for i in 2:length(expr.args) # Start from 2 because the function itself is at index 1
+            expr.args[i] = mutate!(expr.args[i], mutation_probs, primitives_with_arity, expr, i, max_mutations - 1)
         end
     end
 
     return expr
 end
 
-function mutate!(ce::CustomExpr, mutation_probs, primitives_with_arity)
-    mutated_expr = mutate!(ce.expr, mutation_probs, primitives_with_arity, nothing, 0)
+function mutate!(ce::CustomExpr, mutation_probs, primitives_with_arity, max_mutations::Int=5)
+    mutated_expr = mutate!(ce.expr, mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
     return CustomExpr(mutated_expr)
 end
 
-function mutate(ce::CustomExpr, mutation_probs, primitives_with_arity)
-    mutated_expr = mutate!(deepcopy(ce.expr), mutation_probs, primitives_with_arity, nothing, 0)
+function mutate(ce::CustomExpr, mutation_probs, primitives_with_arity, max_mutations::Int=5)
+    mutated_expr = mutate!(deepcopy(ce.expr), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
     return CustomExpr(mutated_expr)
 end

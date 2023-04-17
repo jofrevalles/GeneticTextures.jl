@@ -81,7 +81,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         elseif f == :rand_color
             return Color(rand(3))
         elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
-            op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d], collect(primitives_with_arity)))) #maybe disable boolean functions here?
+            op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d, :perlin_color, :grad_dir], collect(primitives_with_arity)))) #maybe disable boolean functions here?
             n_args = primitives_with_arity[op]
 
             args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
