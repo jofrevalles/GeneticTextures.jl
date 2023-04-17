@@ -132,7 +132,11 @@ function mutate!(ce::CustomExpr, mutation_probs, primitives_with_arity, max_muta
     return CustomExpr(mutated_expr)
 end
 
-function mutate(ce::CustomExpr, mutation_probs, primitives_with_arity, max_mutations::Int=5)
-    mutated_expr = mutate!(deepcopy(ce.expr), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+function mutate(e, mutation_probs, primitives_with_arity, max_mutations::Int=5)
+    if e isa CustomExpr
+        mutated_expr = mutate!(deepcopy(e.expr), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+    else
+        mutated_expr = mutate!(deepcopy(e), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+    end
     return CustomExpr(mutated_expr)
 end
