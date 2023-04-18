@@ -1,6 +1,6 @@
 # GeneticTextures.jl
 
-`GeneticTextures.jl` is a Julia package inspired by the paper [Artificial Evolution for Computer Graphics](https://dl.acm.org/doi/pdf/10.1145/127719.122752). It allows you to interactively evolve textures using genetic programming techniques, bringing the power of evolutionary algorithms to the world of computer graphics.
+`GeneticTextures.jl` is a Julia package inspired by the paper [Artificial Evolution for Computer Graphics](https://dl.acm.org/doi/pdf/10.1145/127719.122752) by Karl Sims. It allows you to interactively evolve textures using genetic programming techniques, bringing the power of evolutionary algorithms to the world of computer graphics.
 
 <div style="text-align: center;">
     <img src="./images/examples.png" alt="Example images" style="display: inline-block; margin: 0 5px;" />
@@ -65,3 +65,13 @@ Here are some examples of textures generated with GeneticTextures.jl:
 <div style="text-align: center;">
     <img src="./images/examples2.png" alt="Examples" style="display: inline-block; margin: 0 5px;" />
 </div>
+
+## Acknowledgments
+
+GeneticTextures.jl makes use of the following third-party packages:
+
+- CoherentNoise (MIT License)
+- Colors (MIT License)
+- ForwardDiff (MIT License)
+- Images (MIT License)
+- Plots (MIT License)
