@@ -1,3 +1,5 @@
+using Plots
+
 # Main loop
 n = 6
 width = 128
@@ -15,10 +17,14 @@ mutation_probs = Dict(
     :duplicate_node => 0.03,
 )
 
-original_population, original_image = generate_population(1, primitives_with_arity, max_depth)
-population, images = create_variations(1, original_population, mutation_probs, primitives_with_arity, max_depth)
+original_population, original_image = generate_population(1, primitives_with_arity, max_depth, width, height)
+original_population = [GeneticTextures.CustomExpr(:(mod(exp(sqrt(or(Color(0.57, 0.22, 0.0), 0.0693))), grad_dir(atan, y / x, sinh(0.4493), 0.4074))))]
+original_image = [generate_image(original_population[1], width, height)]
+population, images = create_variations(1, original_population, mutation_probs, primitives_with_arity, max_depth, width, height)
+
 display_images(original_image[1], images)
 println("Original population: $original_population")
+# savefig("example_UI.svg")
 
 # Main loop
 let population = population, images = images
@@ -31,7 +37,8 @@ let population = population, images = images
             break
         end
 
-        population, images = create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth)
+        population, images = create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth, width, height)
         display_images(chosen_image, images)
+        savefig("example_UI.svg")
     end
 end
