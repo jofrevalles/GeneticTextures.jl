@@ -19,6 +19,7 @@ Pkg.add("https://github.com/jofrevalles/GeneticTextures.jl.git")
 ```
 using GeneticTextures
 
+n = 6
 width = 128
 height = 128
 max_depth = 3
@@ -34,8 +35,8 @@ mutation_probs = Dict(
 )
 
 # Create initial population
-original_population, original_image = generate_population(1, primitives_with_arity, max_depth)
-population, images = create_variations(1, original_population, mutation_probs, primitives_with_arity, max_depth)
+original_population, original_image = generate_population(1, primitives_with_arity, max_depth, width, height)
+population, images = create_variations(1, original_population, mutation_probs, primitives_with_arity, max_depth, width, height)
 
 # Display original and mutated images
 display_images(original_image[1], images)
@@ -50,7 +51,7 @@ let population = population, images = images
             break
         end
 
-        population, images = create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth)
+        population, images = create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth, width, height)
         display_images(chosen_image, images)
     end
 end
