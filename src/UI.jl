@@ -4,9 +4,8 @@ using Plots
 gr(size=(800, 800))
 
 # Function to generate initial population
-function generate_population(n::Int, primitives_with_arity, max_depth)
+function generate_population(n::Int, primitives_with_arity, max_depth, width, height)
     population = [random_expr(primitives_with_arity, max_depth) for _ in 1:n]
-    println("population: $population")
     images = [generate_image(expr, width, height) for expr in population]
     return population, images
 end
@@ -35,14 +34,14 @@ function get_user_choice(n::Int)
 end
 
 # Function to create new variations based on the user-selected image
-function create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth)
+function create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth, width, height)
     new_population = []
     new_images = []
 
     for i in 1:6
         mutated_expr = mutate(population[best_choice], mutation_probs, primitives_with_arity, max_depth)
-        mutated_img = generate_image(mutated_expr, width, height)
         println("Mutation $i: $mutated_expr")
+        mutated_img = generate_image(mutated_expr, width, height)
 
         push!(new_population, mutated_expr)
         push!(new_images, mutated_img)
