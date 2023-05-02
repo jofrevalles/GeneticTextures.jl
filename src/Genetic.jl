@@ -3,6 +3,7 @@ function update_parent_expr!(parent::Expr, idx::Int, new_expr)
     return parent
 end
 
+# TODO: create a `f` type struct that contains functions that are not evaluated?
 function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr, Nothing}=nothing, idx::Int=0, max_mutations::Int=5)
     if max_mutations <= 0
         return expr
@@ -10,7 +11,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
     mutated = false
     # Mutation type 1: any node can mutate into a new random expression
-    if rand() < mutation_probs[:rand_expr]
+    if rand() < mutation_probs[:rand_expr] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2))
         f =  random_function(primitives_with_arity, depth_of_expr(expr))
 
         if parent !== nothing
@@ -52,8 +53,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 5: make a node the argument of a new random function, generating other arguments randomly if necessary
-    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2))
-
+    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2)) && (parent === nothing || parent.args[1] != :color)
         # Select a random function from the primitives
         compatible_primitives = filter(p -> primitives_with_arity[p] > 0, collect(keys(primitives_with_arity)))
         new_func = rand(compatible_primitives)
@@ -109,7 +109,8 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 7: duplicate a node within the expression (like mating an expression with itself)
-    if rand() < mutation_probs[:duplicate_node] && parent !== nothing
+    # TODO: Try to implement a custom node duplication for grad_dir
+    if rand() < mutation_probs[:duplicate_node] && parent !== nothing && parent.args[1] != :grad_dir
         target_pos = rand(2:length(parent.args))
         if idx != target_pos
             parent = update_parent_expr!(parent, target_pos, deepcopy(expr))
