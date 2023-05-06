@@ -9,8 +9,7 @@ function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = prim
         if primitives_with_arity[expr] == 0
             return vars[expr]
         else
-            # TODO: this now currently won't work for functions defined in custom_eval, for example
-            return getfield(Main, expr)  # Return the function associated with the symbol
+            return safe_getfield(expr) # Return the function associated with the symbol
         end
     elseif expr isa Number || expr isa Color
         return expr
@@ -88,13 +87,11 @@ function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = prim
                 return sample.(sampler, noise_args[1] .+ offset, noise_args[2] .+ offset)
             end
         elseif func == :grad_dir
-            if primitives_with_arity[args[1]] == 1
-                return grad_dir.(getfield(Main, args[1]), evaluated_args[2])
-            elseif primitives_with_arity[args[1]] == 2
-                return grad_dir.(getfield(Main, args[1]), evaluated_args[2], evaluated_args[3])
-            else
-                error("Invalid number of arguments for grad_dir")
-            end
+            return grad_dir.(safe_getfield(args[1]), evaluated_args[2], evaluated_args[3])
+        elseif func == :grad_mag
+            return grad_mag.(safe_getfield(args[1]), evaluated_args[2:end]...)
+        elseif func == :blur
+            return blur.(safe_getfield(args[1]), evaluated_args[2], evaluated_args[3])
         elseif func == :atan
             return atan.(evaluated_args[1], evaluated_args[2])
         elseif func == :dissolve

@@ -9,3 +9,15 @@ function generate_unique_filename(folder::String, prefix::String, extension = ""
         counter += 1
     end
 end
+
+function safe_getfield(field::Symbol)
+    if isdefined(Main, field)
+        return getfield(Main, field)
+    elseif isdefined(Base, field)
+        return getfield(Base, field)
+    elseif isdefined(GeneticTextures, field)
+        return getfield(GeneticTextures, field)
+    else
+        error("Symbol $field is not defined")
+    end
+end
