@@ -104,7 +104,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
 
             return Expr(:call, f, args...)
         elseif f == :grad_mag
-            op = rand((x -> x[1]).(filter(x -> x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
+            op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
             n_args = primitives_with_arity[op]
             args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
 
