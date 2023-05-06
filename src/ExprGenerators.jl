@@ -12,7 +12,9 @@ const primitives_with_arity = Dict(
     :mod => 2,
     :perlin_2d => 3,
     :perlin_color => 4,
-    :grad_dir => 1, # grad_dir takes 1 argument, but it can be a function with 1 or 2 arguments
+    :grad_mag => 1, # grad_mag takes 1 argument, but it can be a function with variable number of arguments
+    :grad_dir => 3,
+    # :blur => 3, # blur takes 3 arguments, since currently the first argument has to be a function with 2 arguments
     :atan => 2,
     :log => 1,
     :exp => 1,
@@ -24,6 +26,21 @@ const primitives_with_arity = Dict(
     :rand_scalar => 0,
     :rand_color => 0,
     :dissolve => 3
+)
+
+# special_funcs take not only numbers as arguments
+const special_funcs = (
+    :grad_mag,
+    :grad_dir,
+    # :blur,
+    :perlin_2d,
+    :perlin_color
+)
+
+const boolean_funcs = (
+    :or,
+    :and,
+    :xor
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)
@@ -49,7 +66,7 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         end
     else
         if max_depth > boolean_functions_depth_threshold # only allow boolean functions deep in the function graph
-            available_funcs = [k for k in keys(primitives_with_arity) if k ∉ [:or, :xor, :and]]
+            available_funcs = [k for k in keys(primitives_with_arity) if k ∉ boolean_funcs]
         else
             available_funcs = keys(primitives_with_arity)
         end
@@ -59,18 +76,18 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         n_args = primitives_with_arity[f]
 
         #TODO: refactor the code so looks cleaner, I don't like how we are calling `rand()/5` etc
-        #TODO:  make that the random numbers in the print only have 2 digits after the decimal point
+        #TODO: make that the random numbers in the print only have 2 digits after the decimal point
 
         # TODO: check if this is the best way to handle perlin_2d
         if f == :perlin_2d
-            seed = round(rand() * 100, digits=4)
+            seed = round(rand() * 100, digits = 4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
             args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args-1]
 
             return Expr(:call, f, seed, args...)
         elseif f == :perlin_color
-            seed = round(rand() * 100, digits=4)
+            seed = round(rand() * 100, digits = 4)
             limited_depth = min(3, max_depth) # Set a limit to the depth of the functions for the arguments
 
             args = [random_function(primitives_with_arity, limited_depth - 1) for _ in 1:n_args-2]
@@ -81,9 +98,14 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         elseif f == :rand_color
             return Color(rand(3))
         elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
-            op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d, :perlin_color, :grad_dir], collect(primitives_with_arity)))) #maybe disable boolean functions here?
+            op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
             n_args = primitives_with_arity[op]
+            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
 
+            return Expr(:call, f, args...)
+        elseif f == :grad_mag
+            op = rand((x -> x[1]).(filter(x -> x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
+            n_args = primitives_with_arity[op]
             args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
 
             return Expr(:call, f, args...)
