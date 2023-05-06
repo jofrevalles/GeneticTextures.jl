@@ -14,22 +14,24 @@ function grad_dir(f, x, y)
     """
     Compute the gradient of f and return the direction of the gradient (in radians).
     """
+
     g = gradient(z -> f(z[1], z[2]), [x, y])
     return atan(g[2], g[1])
 end
 
-function grad_dir(f, x)
+function grad_mag(f, coords::Vararg{Number})
     """
-    Compute the derivative of f and return the derivative
+    Compute the gradient of f and return the magnitude of the gradient.
     """
+
     if f == log
         f = x -> log(abs(x))
     elseif f == sqrt
         f = x -> sqrt(abs(x))
     end
 
-    g = derivative(f, x)
-    return g[1]
+    g = gradient(c -> f(c...), collect(coords))
+    return sqrt(sum(x^2 for x in g))
 end
 
 function dissolve(f1, f2, weight)
