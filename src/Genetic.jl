@@ -11,7 +11,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
     mutated = false
     # Mutation type 1: any node can mutate into a new random expression
-    if rand() < mutation_probs[:rand_expr] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2))
+    if rand() < mutation_probs[:rand_expr] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2))
         f =  random_function(primitives_with_arity, depth_of_expr(expr))
 
         if parent !== nothing
@@ -34,7 +34,9 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 4: mutate function into a different function, adjusting arguments as necessary
-    if expr isa Expr && rand() < mutation_probs[:rand_func]
+    # TODO: For now, special_funcs are excluded from this mutation type
+    # TODO: Fix: color could be added if only the arguments do not return a color
+    if expr isa Expr && rand() < mutation_probs[:rand_func] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || !(parent = :color))
         prim_keys = collect(keys(primitives_with_arity))
         compatible_primitives = filter(p -> primitives_with_arity[p] == length(expr.args) - 1, prim_keys)
 
@@ -53,7 +55,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 5: make a node the argument of a new random function, generating other arguments randomly if necessary
-    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] == :grad_dir && idx == 2)) && (parent === nothing || parent.args[1] != :color)
+    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || !(parent = :color))
         # Select a random function from the primitives
         compatible_primitives = filter(p -> primitives_with_arity[p] > 0, collect(keys(primitives_with_arity)))
         new_func = rand(compatible_primitives)
@@ -68,6 +70,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
             insert!(args, rand(1:n_args-1), expr)
+
             expr = Expr(:call, new_func, seed, args...)
         elseif new_func == :grad_dir
             op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d], collect(primitives_with_arity))))
@@ -77,13 +80,13 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
                 args_op[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
             insert!(args_op, rand(1:n_args_op), expr)
+
             expr = Expr(:call, new_func, op, args_op...)
         else
             args = Vector{Any}(undef, n_args-1)
             for i in 1:(n_args-1)
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
-
             insert!(args, rand(1:n_args), expr)
 
             expr = Expr(:call, new_func, args...)
@@ -92,7 +95,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
     # Mutation type 6: remove an expression from its parent function (inverse of mutation type 5)
     if expr isa Expr && rand() < mutation_probs[:become_argument]
-        if expr.args[1] == :grad_dir || expr.args[1] == :perlin_2d || expr.args[1] == :perlin_color
+        if expr.args[1] ∈ special_funcs
             pos = rand(3:length(expr.args)) # Exclude the first argument
         else
             pos = rand(2:length(expr.args)) # Start from 2 because the function itself is at index 1
@@ -110,7 +113,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
     # Mutation type 7: duplicate a node within the expression (like mating an expression with itself)
     # TODO: Try to implement a custom node duplication for grad_dir
-    if rand() < mutation_probs[:duplicate_node] && parent !== nothing && parent.args[1] != :grad_dir
+    if rand() < mutation_probs[:duplicate_node] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2))
         target_pos = rand(2:length(parent.args))
         if idx != target_pos
             parent = update_parent_expr!(parent, target_pos, deepcopy(expr))
