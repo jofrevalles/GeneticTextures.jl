@@ -34,23 +34,22 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 4: mutate function into a different function, adjusting arguments as necessary
-    # TODO: For now, special_funcs are excluded from this mutation type
     # TODO: Fix: color could be added if only the arguments do not return a color
     if expr isa Expr && rand() < mutation_probs[:rand_func] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || parent != :color)
-        prim_keys = collect(keys(primitives_with_arity))
-        compatible_primitives = filter(p -> primitives_with_arity[p] == length(expr.args) - 1, prim_keys)
+        if expr.args[1] ∉ special_funcs # TODO: For now, special_funcs are excluded from this mutation type
+            prim_keys = collect(keys(primitives_with_arity))
+            compatible_primitives = filter(p -> primitives_with_arity[p] == length(expr.args) - 1, prim_keys)
+            compatible_primitives = filter(p -> p ∉ (:grad_dir, :grad_mag), compatible_primitives) # For now, exclude grad_dir and grad_mag")
 
-        # Exclude grad_dir from being changed to a different function
-        compatible_primitives = filter(p -> p != :grad_dir, compatible_primitives)
-
-        new_func = rand(compatible_primitives)
-        if new_func == :perlin_2d || new_func == :perlin_color
-            seed = round(rand() * 100, digits=4)
-            new_args = [new_func, seed]
-            append!(new_args, expr.args[2:end])
-            expr = Expr(:call, new_args...)
-        else
-            expr.args[1] = new_func
+            new_func = rand(compatible_primitives)
+            if new_func == :perlin_2d || new_func == :perlin_color
+                seed = round(rand() * 100, digits=4)
+                new_args = [new_func, seed]
+                append!(new_args, expr.args[2:end])
+                expr = Expr(:call, new_args...)
+            else
+                expr.args[1] = new_func
+            end
         end
     end
 
