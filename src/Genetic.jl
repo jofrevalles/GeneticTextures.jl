@@ -36,7 +36,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     # Mutation type 4: mutate function into a different function, adjusting arguments as necessary
     # TODO: For now, special_funcs are excluded from this mutation type
     # TODO: Fix: color could be added if only the arguments do not return a color
-    if expr isa Expr && rand() < mutation_probs[:rand_func] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || !(parent = :color))
+    if expr isa Expr && rand() < mutation_probs[:rand_func] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || parent != :color)
         prim_keys = collect(keys(primitives_with_arity))
         compatible_primitives = filter(p -> primitives_with_arity[p] == length(expr.args) - 1, prim_keys)
 
@@ -55,7 +55,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 5: make a node the argument of a new random function, generating other arguments randomly if necessary
-    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || !(parent = :color))
+    if rand() < mutation_probs[:add_argument] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || parent != :color)
         # Select a random function from the primitives
         compatible_primitives = filter(p -> primitives_with_arity[p] > 0, collect(keys(primitives_with_arity)))
         new_func = rand(compatible_primitives)
@@ -73,7 +73,7 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
             expr = Expr(:call, new_func, seed, args...)
         elseif new_func == :grad_dir
-            op = rand((x -> x[1]).(filter(x -> x.second ∈ [1, 2] && x.first ∉ [:or, :and, :xor, :perlin_2d], collect(primitives_with_arity))))
+            op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
             n_args_op = primitives_with_arity[op]
             args_op = Vector{Any}(undef, n_args_op)
             for i in 1:n_args_op
@@ -82,8 +82,17 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
             insert!(args_op, rand(1:n_args_op), expr)
 
             expr = Expr(:call, new_func, op, args_op...)
-        else
-            args = Vector{Any}(undef, n_args-1)
+        elseif new_func == :grad_mag
+            op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
+            n_args_op = primitives_with_arity[op]
+            args_op = Vector{Any}(undef, n_args_op)
+            for i in 1:n_args_op
+                args_op[i] = random_function(primitives_with_arity, depth_of_expr(expr))
+            end
+            insert!(args_op, rand(1:n_args_op), expr)
+
+            expr = Expr(:call, new_func, op, args_op...)
+        else            args = Vector{Any}(undef, n_args-1)
             for i in 1:(n_args-1)
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
