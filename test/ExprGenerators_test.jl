@@ -24,9 +24,9 @@
             @test f in keys(primitives_with_arity)
 
             # Check the number of arguments for the function call.
-            # For the `:grad_dir` function, the arity depends on the input function it takes,
+            # For the `:grad_mag` function, the arity depends on the input function it takes,
             # so we need to handle it differently.
-            if f == :grad_dir
+            if f == :grad_mag
                 n_args = primitives_with_arity[expr.args[2]]
                 @test length(expr.args) == n_args + 2
             else
