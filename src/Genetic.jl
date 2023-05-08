@@ -120,9 +120,8 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
     end
 
     # Mutation type 7: duplicate a node within the expression (like mating an expression with itself)
-    # TODO: Try to implement a custom node duplication for grad_dir
     if rand() < mutation_probs[:duplicate_node] && parent !== nothing && !(parent.args[1] ∈ special_funcs && idx == 2)
-        target_pos = rand(2:length(parent.args))
+        target_pos = rand(((parent.args[1] ∈ special_funcs) ? 3 : 2):length(parent.args))
         if idx != target_pos
             parent = update_parent_expr!(parent, target_pos, deepcopy(expr))
             mutated = true
