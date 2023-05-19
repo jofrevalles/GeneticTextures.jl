@@ -37,10 +37,17 @@ const special_funcs = (
     :perlin_color
 )
 
+# boolean_funcs are boolean functions
 const boolean_funcs = (
     :or,
     :and,
     :xor
+)
+
+# color_funcs are functions that can return a color
+const color_funcs = (
+    :perlin_color,
+    :rand_color
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)
