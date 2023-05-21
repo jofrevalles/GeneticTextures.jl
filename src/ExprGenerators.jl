@@ -47,7 +47,8 @@ const boolean_funcs = (
 # color_funcs are functions that can return a color
 const color_funcs = (
     :perlin_color,
-    :rand_color
+    :rand_color,
+    :Color
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)
