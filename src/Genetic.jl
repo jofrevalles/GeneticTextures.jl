@@ -134,13 +134,6 @@ function recursive_mutation!(expr, mutation_probs, primitives_dict, parent, idx,
 
     # Recursively mutate child nodes
     if !mutated && expr isa Expr
-        println("expr.args[1] = $(expr.args[1])")
-        if length(keys(primitives_dict) ∩ color_funcs) > 1
-            println("there are still color funcs in primitives_dict")
-        else
-            println("there are no color funcs in primitives_dict")
-        end
-
         for i in 2:length(expr.args) # Start from 2 because the function itself is at index 1
             if expr.args[1] ∈ color_funcs
                 expr.args[i] = recursive_mutation!(expr.args[i], mutation_probs, filter(x -> x.first ∉ color_funcs, primitives_dict), expr, i, max_mutations)
