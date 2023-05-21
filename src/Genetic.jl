@@ -4,7 +4,7 @@ function update_parent_expr!(parent::Expr, idx::Int, new_expr)
 end
 
 # TODO: create a `f` type struct that contains functions that are not evaluated?
-function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr, Nothing}=nothing, idx::Int=0, max_mutations::Int=5)
+function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr, Nothing}=nothing, color_possible=true, idx::Int=0, max_mutations::Int=5)
     if max_mutations <= 0
         return expr
     end
@@ -69,35 +69,23 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
             insert!(args, rand(1:n_args-1), expr)
-
             expr = Expr(:call, new_func, seed, args...)
-        elseif new_func == :grad_dir
-            op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
-            n_args_op = primitives_with_arity[op]
-            args_op = Vector{Any}(undef, n_args_op)
-            for i in 1:n_args_op
-                args_op[i] = random_function(primitives_with_arity, depth_of_expr(expr))
+        else
+            if new_func == :grad_dir
+                op = rand((x -> x[1]).(filter(x -> x.second == 2 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
+                n_args = primitives_with_arity[op]
+            elseif new_func == :grad_mag
+                op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
+                n_args = primitives_with_arity[op]
             end
-            insert!(args_op, rand(1:n_args_op), expr)
 
-            expr = Expr(:call, new_func, op, args_op...)
-        elseif new_func == :grad_mag
-            op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity))))
-            n_args_op = primitives_with_arity[op]
-            args_op = Vector{Any}(undef, n_args_op)
-            for i in 1:n_args_op
-                args_op[i] = random_function(primitives_with_arity, depth_of_expr(expr))
-            end
-            insert!(args_op, rand(1:n_args_op), expr)
-
-            expr = Expr(:call, new_func, op, args_op...)
-        else            args = Vector{Any}(undef, n_args-1)
+            args = Vector{Any}(undef, n_args-1)
             for i in 1:(n_args-1)
                 args[i] = random_function(primitives_with_arity, depth_of_expr(expr))
             end
             insert!(args, rand(1:n_args), expr)
 
-            expr = Expr(:call, new_func, args...)
+            expr = Expr(:call, new_func, (new_func ∈ [:grad_dir, :grad_mag] ? (op, args...) : args)...)
         end
     end
 
@@ -130,8 +118,10 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 
     # Recursively mutate child nodes
     if !mutated && expr isa Expr
+        color_possible = expr.args[1] ∈ color_funcs ? false : color_possible # If the function is a color function, then the arguments cannot be colors
+
         for i in 2:length(expr.args) # Start from 2 because the function itself is at index 1
-            expr.args[i] = mutate!(expr.args[i], mutation_probs, primitives_with_arity, expr, i, max_mutations - 1)
+            expr.args[i] = mutate!(expr.args[i], mutation_probs, primitives_with_arity, expr, color_possible, i, max_mutations - 1)
         end
     end
 
@@ -139,15 +129,15 @@ function mutate!(expr, mutation_probs, primitives_with_arity, parent::Union{Expr
 end
 
 function mutate!(ce::CustomExpr, mutation_probs, primitives_with_arity, max_mutations::Int=5)
-    mutated_expr = mutate!(ce.expr, mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+    mutated_expr = mutate!(ce.expr, mutation_probs, primitives_with_arity, nothing, true, 0, max_mutations)
     return CustomExpr(mutated_expr)
 end
 
 function mutate(e, mutation_probs, primitives_with_arity, max_mutations::Int=5)
     if e isa CustomExpr
-        mutated_expr = mutate!(deepcopy(e.expr), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+        mutated_expr = mutate!(deepcopy(e.expr), mutation_probs, primitives_with_arity, nothing, true, 0, max_mutations)
     else
-        mutated_expr = mutate!(deepcopy(e), mutation_probs, primitives_with_arity, nothing, 0, max_mutations)
+        mutated_expr = mutate!(deepcopy(e), mutation_probs, primitives_with_arity, nothing, true, 0, max_mutations)
     end
     return CustomExpr(mutated_expr)
 end
