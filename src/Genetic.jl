@@ -40,7 +40,6 @@ function recursive_mutation!(expr, mutation_probs, primitives_dict, parent, idx,
     end
 
     # Mutation type 4: mutate function into a different function, adjusting arguments as necessary
-    # TODO: Fix: color could be added if only the arguments do not return a color
     if expr isa Expr && rand() < mutation_probs[:rand_func] && (parent === nothing || !(parent.args[1] ∈ special_funcs && idx == 2)) && (parent === nothing || parent != :color)
         if expr.args[1] ∉ special_funcs # TODO: For now, special_funcs are excluded from this mutation type
             max_mutations -= 1
