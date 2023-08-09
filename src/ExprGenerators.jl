@@ -29,6 +29,7 @@ const primitives_with_arity = Dict(
     :dissolve => 3,
     :laplacian => 1,
     :neighbor_min => 1,
+    :neighbor_ave => 1,
     :ifs => 3,
     :max => 2,
     :min => 2,

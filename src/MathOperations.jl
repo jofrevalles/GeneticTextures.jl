@@ -80,7 +80,7 @@ function gaussian_kernel(size, sigma)
     return kernel
 end
 
-function laplacian(expr, vars, width, height, Δy = 1, Δx = 1)
+function laplacian(expr, vars, width, height; Δx = 1, Δy = 1)
     # Compute the Laplacian of an expression at a point (x, y)
     # by comparing the value of expr at (x, y) with its values at (x±Δ, y) and (x, y±Δ).
 
@@ -93,26 +93,26 @@ function laplacian(expr, vars, width, height, Δy = 1, Δx = 1)
     center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
 
     if idx_x > 1 && idx_x < width
-        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+1, idx_y], :B => B_grid[idx_x+1, idx_y])), width, height)
-        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-1, idx_y], :B => B_grid[idx_x-1, idx_y])), width, height)
+        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+Δx, idx_y], :B => B_grid[idx_x+Δx, idx_y])), width, height)
+        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-Δx, idx_y], :B => B_grid[idx_x-Δx, idx_y])), width, height)
         ∇x = (x_plus + x_minus - 2 * center) / Δx^2
     elseif idx_x == 1
-        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+1, idx_y], :B => B_grid[idx_x+1, idx_y])), width, height)
+        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+Δx, idx_y], :B => B_grid[idx_x+Δx, idx_y])), width, height)
         ∇x = (x_plus - center) / Δx^2
     else # idx_x == width
-        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-1, idx_y], :B => B_grid[idx_x-1, idx_y])), width, height)
+        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-Δx, idx_y], :B => B_grid[idx_x-Δx, idx_y])), width, height)
         ∇x = (x_minus - center) / Δx^2
     end
 
     if idx_y > 1 && idx_y < height
-        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+1], :B => B_grid[idx_x, idx_y+1])), width, height)
-        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-1], :B => B_grid[idx_x, idx_y-1])), width, height)
+        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+Δy], :B => B_grid[idx_x, idx_y+Δy])), width, height)
+        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-Δy], :B => B_grid[idx_x, idx_y-Δy])), width, height)
         ∇y = (y_plus + y_minus - 2 * center) / Δy^2
     elseif idx_y == 1
-        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+1], :B => B_grid[idx_x, idx_y+1])), width, height)
+        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+Δy], :B => B_grid[idx_x, idx_y+Δy])), width, height)
         ∇y = (y_plus - center) / Δy^2
     else # idx_y == height
-        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-1], :B => B_grid[idx_x, idx_y-1])), width, height)
+        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-Δy], :B => B_grid[idx_x, idx_y-Δy])), width, height)
         ∇y = (y_minus - center) / Δy^2
     end
 
@@ -123,8 +123,8 @@ function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
     # Return the smalles value from a neighborhood of size (2Δx + 1) x (2Δy + 1)
     # around the point (x, y)
 
-    idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y]+0.5) * (height-1) + 1 |> trunc |> Int
+    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
+    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
 
     A_grid = get(vars, :A, 0)
     B_grid = get(vars, :B, 0)
@@ -144,12 +144,12 @@ function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
     return min_val
 end
 
-function neighbor_ave(expr, vars, width, height, Δy = 1, Δx = 1)
+function neighbor_ave(expr, vars, width, height; Δx = 1, Δy = 1)
     # Return the average from a neighborhood of size (2Δx + 1) x (2Δy + 1)
     # around the point (x, y)
 
-    idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y]+0.5) * (height-1) + 1 |> trunc |> Int
+    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
+    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
 
     A_grid = get(vars, :A, 0)
     B_grid = get(vars, :B, 0)

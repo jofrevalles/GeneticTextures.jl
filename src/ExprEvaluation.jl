@@ -1,9 +1,8 @@
 using CoherentNoise: sample, perlin_2d
 using Random: seed!
 
-function custom_eval(ce::CustomExpr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity)
-    return custom_eval(ce.expr, vars, width, height; samplers, primitives_with_arity)
-end
+custom_eval(ce::CustomExpr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity) =
+    custom_eval(ce.expr, vars, width, height; samplers, primitives_with_arity)
 
 ternary(cond, x, y) = cond ? x : y
 ternary(cond::Float64, x, y) = Bool(cond) ? x : y # If cond is a float, convert the float to a boolean
@@ -141,18 +140,25 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
         elseif func == :laplacian
             return laplacian(args[1], vars, width, height)
         elseif func == :neighbor_min
-            # Extract positional arguments
-            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args)
-            # Extract keyword arguments
-            if any(a -> a isa Expr && a.head == :parameters, args)
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
                 kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
                 kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
             else
                 kw_dict = Dict()
             end
+            return neighbor_min(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :neighbor_ave
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
 
-            # Call the function with positional and keyword arguments
-            return neighbor_min(positional_args[1], vars, width, height; kw_dict...)
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return neighbor_ave(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
         else
             error("Unknown function: $func")
         end
