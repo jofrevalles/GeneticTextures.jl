@@ -340,7 +340,7 @@ end
 # F_dB = GeneticTextures.CustomExpr(:(laplacian(A)*1.99))
 F_A0 = GeneticTextures.CustomExpr(:(or(or(xor(sin(x), y + 0.4), xor(cos(x), y + 0.5)), or(xor(sin(y), x + 0.4), xor(cos(y), x + 0.5)))))
 F_B0 = GeneticTextures.CustomExpr(:(ifs(rand_scalar(18.2345 * (1.0 + y * x)) > 0.99, 0.0, 1)))
-F_dA = GeneticTextures.CustomExpr(:(-1.0 * laplacian(A)*B+0.4*neighbor_min(A)))
+F_dA = GeneticTextures.CustomExpr(:(-1.0 * laplacian(A)*B+0.4*neighbor_min(A; Δx=2, Δy=2)))
 F_dB = GeneticTextures.CustomExpr(:(-1.0 * laplacian(B)*A-0.4*neighbor_min(B)))
 # F_B0 = GeneticTextures.CustomExpr(:(ifs(x^2 + y^2 < 0.1, 1.0, 0.0)))
 # draw a happy face
@@ -355,5 +355,5 @@ color_expr = :((a, b) -> RGB(a, b, 0.0))
 
 ds = DynamicalSystem(F_A0, F_B0, F_dA, F_dB)
 # plots_animate_system(ds, 64, 64, 3.6, 0.01, false)
-img = animate_system(ds, 256, 256, 2.0, 0.01, color_expr)
+img = animate_system(ds, 32, 32, 2.0, 0.01, color_expr)
 # display(heatmap(img))

@@ -24,4 +24,7 @@ export mutate, mutate!
 include("UI.jl")
 export generate_population, display_images, get_user_choice, create_variations
 
+# include("DynamicalSystems.jl")
+# export DynamicalSystem, animate_system
+
 end

@@ -26,6 +26,14 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
     elseif expr isa Number || expr isa Color
         return expr
     else
+        if expr.head == :kw
+            # Handle individual keyword arguments.
+            return custom_eval(expr.args[2], vars, width, height; samplers=samplers, primitives_with_arity=primitives_with_arity)
+        elseif expr.head == :parameters
+            # Handle grouped keyword arguments.
+            kw_args = [custom_eval(kw, vars, width, height; samplers=samplers, primitives_with_arity=primitives_with_arity) for kw in expr.args]
+            return Dict(expr.args[i].args[1] => kw_args[i] for i in 1:length(expr.args))
+        end
         # Assume expr is an Expr with head :call
         func = expr.args[1]
         args = expr.args[2:end]
@@ -133,7 +141,18 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
         elseif func == :laplacian
             return laplacian(args[1], vars, width, height)
         elseif func == :neighbor_min
-            return neighbor_min(args[1], vars, width, height)
+            # Extract positional arguments
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args)
+            # Extract keyword arguments
+            if any(a -> a isa Expr && a.head == :parameters, args)
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+
+            # Call the function with positional and keyword arguments
+            return neighbor_min(positional_args[1], vars, width, height; kw_dict...)
         else
             error("Unknown function: $func")
         end
