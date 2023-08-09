@@ -83,3 +83,6 @@ end
 function Base.show(io::IO, c::Color)
     print(io, "Color(", round(c.r, digits=2), ", ", round(c.g, digits=2), ", ", round(c.b, digits=2), ")")
 end
+
+using Colors
+Colors.RGB(c::GeneticTextures.Color) = RGB(c.r, c.g, c.b)
