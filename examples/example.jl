@@ -18,20 +18,26 @@ mutation_probs = Dict(
 )
 
 original_population, original_image = generate_population(1, primitives_with_arity, max_depth, width, height)
-original_population = [GeneticTextures.CustomExpr(:(mod(exp(sqrt(or(Color(0.57, 0.22, 0.0), 0.0693))), grad_dir(atan, y / x, sinh(0.4493), 0.4074))))]
+# original_population = [GeneticTextures.CustomExpr(:(cosh(mod(exp(sqrt(or(Color(0.57, 0.22, 0.0), 0.0693))), grad_dir(atan, y / x, sinh(0.4493), 0.4074)))))]
+# original_population = [GeneticTextures.CustomExpr(:(cos(perlin_color(84.2126, grad_mag(mod, exp(x), 0.91 - 0.9128), abs(x), dissolve(y, Color(0.28, 0.47, 0.86), Color(0.28, 0.47, 0.86))))))]
 original_image = [generate_image(original_population[1], width, height)]
 population, images = create_variations(1, original_population, mutation_probs, primitives_with_arity, max_depth, width, height)
 
 display_images(original_image[1], images)
+
+push!(images, original_image[1])
+push!(population, original_population[1])
+
 println("Original population: $original_population")
 # savefig("example_UI.svg")
 
 # Main loop
 let population = population, images = images
     while true
-        best_choice = get_user_choice(n)
+        best_choice = get_user_choice(length(images))
         println("Chosen Image: $(population[best_choice])")
         chosen_image = images[best_choice]
+        chosen_population = population[best_choice]
 
         if best_choice === nothing
             break
@@ -39,6 +45,9 @@ let population = population, images = images
 
         population, images = create_variations(best_choice, population, mutation_probs, primitives_with_arity, max_depth, width, height)
         display_images(chosen_image, images)
-        savefig("example_UI.svg")
+
+        push!(images, chosen_image)
+        push!(population, chosen_population)
+        # savefig("example_UI.svg")
     end
 end
