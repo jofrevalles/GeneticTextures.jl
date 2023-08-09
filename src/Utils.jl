@@ -21,3 +21,16 @@ function safe_getfield(field::Symbol)
         error("Symbol $field is not defined")
     end
 end
+
+function capture_function(func_expr::Expr)
+    raw_str = string(func_expr)
+
+    # Remove comments
+    cleaned_str = replace(raw_str, r"\#\=.*\=\#" => "")
+
+    # Remove newline characters and extra spaces
+    cleaned_str = replace(cleaned_str, '\n' => " ")
+    cleaned_str = replace(cleaned_str, r"\s+" => " ")
+
+    return strip(cleaned_str)
+end

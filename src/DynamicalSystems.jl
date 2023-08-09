@@ -2,6 +2,7 @@ using Plots
 using FileIO
 using Images
 using Colors
+using GeneticTextures: capture_function
 
 struct DynamicalSystem
     F_A0::Union{GeneticTextures.CustomExpr, Symbol, Number, GeneticTextures.Color}
@@ -145,7 +146,22 @@ function plots_animate_system(ds::DynamicalSystem, width, height, T, dt, save_fi
     gif(anim, "$animation_dir/dynamical_system.gif", fps = 15)
 end
 
-function animate_system(ds::DynamicalSystem, width, height, T, dt)
+"""
+    animate_system(ds::DynamicalSystem, width, height, T, dt, color_func::Function)
+
+Animate a dynamical system by evolving it over time and saving the frames to a folder.
+
+# Arguments
+- `ds::DynamicalSystem`: The dynamical system to animate.
+- `width::Int`: The width of the image in pixels.
+- `height::Int`: The height of the image in pixels.
+- `T::Number`: The total time to evolve the system.
+- `dt::Number`: The time step to use when evolving the system.
+- `color_expr::Expr`: An expr that contains a function that tells how to combine the values of A and B to create a color. e.g., `:((A, B) -> RGB(A, B, 0))`
+"""
+function animate_system(ds::DynamicalSystem, width, height, T, dt, color_expr::Expr)
+    color_func = eval(color_expr)
+
     # Initialize A and B using F_A and F_B
     A = zeros(height, width)
     B = zeros(height, width)
@@ -179,14 +195,15 @@ function animate_system(ds::DynamicalSystem, width, height, T, dt)
     # Save the system's expressions to a file
     expr_file = animation_dir * "/expressions.txt"
     open(expr_file, "w") do f
-        write(f, "F_A0: GeneticTextures.CustomExpr($(string(ds.F_A0)))\n")
-        write(f, "F_B0: GeneticTextures.CustomExpr($(string(ds.F_B0)))\n")
-        write(f, "F_dA: GeneticTextures.CustomExpr($(string(ds.F_dA)))\n")
-        write(f, "F_dB: GeneticTextures.CustomExpr($(string(ds.F_dB)))\n")
-        write(f, "T: $T\n")
-        write(f, "dt: $dt\n")
-        write(f, "width: $width\n")
-        write(f, "height: $height\n")
+        write(f, "F_A0= GeneticTextures.CustomExpr($(string(ds.F_A0)))\n")
+        write(f, "F_B0= GeneticTextures.CustomExpr($(string(ds.F_B0)))\n")
+        write(f, "F_dA= GeneticTextures.CustomExpr($(string(ds.F_dA)))\n")
+        write(f, "F_dB= GeneticTextures.CustomExpr($(string(ds.F_dB)))\n")
+        write(f, "color_func= $(capture_function(color_expr))\n")
+        write(f, "T= $T\n")
+        write(f, "dt= $dt\n")
+        write(f, "width= $width\n")
+        write(f, "height= $height\n")
     end
 
     image_files = []  # Store the names of the image files to use for creating the gif
@@ -199,9 +216,7 @@ function animate_system(ds::DynamicalSystem, width, height, T, dt)
         img = Array{RGB{Float64}, 2}(undef, height, width)
         for x_pixel in 1:width
             for y_pixel in 1:height
-                r = A[y_pixel, x_pixel] # clamp(A[y_pixel, x_pixel], 0.0, 1.0)
-                g = B[y_pixel, x_pixel] # clamp(B[y_pixel, x_pixel], 0.0, 1.0)
-                img[y_pixel, x_pixel] = RGB(g, g, g)  # we set blue = 0 for simplicity
+                img[y_pixel, x_pixel] = Base.invokelatest(color_func, A[y_pixel, x_pixel], B[y_pixel, x_pixel])
             end
         end
 
@@ -222,7 +237,9 @@ function animate_system(ds::DynamicalSystem, width, height, T, dt)
     println("Expressions saved to: $expr_file")
 end
 
-function animate_system_test(ds::DynamicalSystem, width, height, T, dt)
+function animate_system_test(ds::DynamicalSystem, width, height, T, dt, color_expr::Expr)
+    color_func = eval(color_expr)
+
     # Initialize A and B using F_A and F_B
     # A = zeros(height, width)
     # B = zeros(height, width)
@@ -277,10 +294,11 @@ function animate_system_test(ds::DynamicalSystem, width, height, T, dt)
         write(f, "F_B0= GeneticTextures.CustomExpr($(string(ds.F_B0)))\n")
         write(f, "F_dA= GeneticTextures.CustomExpr($(string(ds.F_dA)))\n")
         write(f, "F_dB= GeneticTextures.CustomExpr($(string(ds.F_dB)))\n")
-        write(f, "T: $T\n")
-        write(f, "dt: $dt\n")
-        write(f, "width: $width\n")
-        write(f, "height: $height\n")
+        write(f, "color_func= $(capture_function(color_expr))\n")
+        write(f, "T= $T\n")
+        write(f, "dt= $dt\n")
+        write(f, "width= $width\n")
+        write(f, "height= $height\n")
     end
 
     image_files = []  # Store the names of the image files to use for creating the gif
@@ -293,9 +311,7 @@ function animate_system_test(ds::DynamicalSystem, width, height, T, dt)
         img = Array{RGB{Float64}, 2}(undef, height, width)
         for x_pixel in 1:width
             for y_pixel in 1:height
-                r = A[y_pixel, x_pixel] # clamp(A[y_pixel, x_pixel], 0.0, 1.0)
-                g = B[y_pixel, x_pixel] # clamp(B[y_pixel, x_pixel], 0.0, 1.0)
-                img[y_pixel, x_pixel] = RGB(r, g, 0)  # we set blue = 0 for simplicity
+                img[y_pixel, x_pixel] = Base.invokelatest(color_func, A[y_pixel, x_pixel], B[y_pixel, x_pixel])
             end
         end
 
@@ -335,8 +351,9 @@ F_dB = GeneticTextures.CustomExpr(:(-1.0 * laplacian(B)*A-0.4*neighbor_min(B)))
 # F_A0 = GeneticTextures.CustomExpr(:(ifs(or(or(or(and((x^2 + y^2) < 0.1, (x^2 + y^2) > 0.09), and(and((x^2 + y^2) < 0.05, (x^2 + y^2) > 0.04), and(and(y > 0, x > -0.1), x < 0.1))),and((x + 0.05)^2 + (y + 0.05)^2 < 0.002 ,(x + 0.05)^2 + (y + 0.05)^2 > 0.001)),and((x - 0.05)^2 + (y + 0.05)^2 < 0.002, (x - 0.05)^2 + (y + 0.05)^2 > 0.001)), 0.0, 1.0)))
 F_B0 = GeneticTextures.CustomExpr(:(ifs(and((x^2 + y^2) < 0.1, (x^2 + y^2) > 0.09), 0.0, 1.0)))
 F_A0 = GeneticTextures.CustomExpr(:(ifs(rand_scalar(18.2345 * (1.0 + y * x)) > 0.99, 0.0, 1)))
+color_expr = :((a, b) -> RGB(a, b, 0.0))
 
 ds = DynamicalSystem(F_A0, F_B0, F_dA, F_dB)
 # plots_animate_system(ds, 64, 64, 3.6, 0.01, false)
-img = animate_system(ds, 256, 256, 2.0, 0.01)
+img = animate_system(ds, 256, 256, 2.0, 0.01, color_expr)
 # display(heatmap(img))
