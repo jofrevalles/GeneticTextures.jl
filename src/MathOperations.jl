@@ -63,6 +63,23 @@ function blur(f, x, y, matrix=gaussian_kernel(5, 1.0), increment=0.01)
     return result / total_weight
 end
 
+function gaussian_kernel(size, sigma)
+    kernel = zeros(size, size)
+    center = (size + 1) / 2
+
+    for i in 1:size
+        for j in 1:size
+            x_offset = i - center
+            y_offset = j - center
+            kernel[i, j] = exp(-(x_offset^2 + y_offset^2) / (2 * sigma^2))
+        end
+    end
+
+    # Normalize the kernel
+    kernel = kernel ./ sum(kernel)
+    return kernel
+end
+
 function laplacian(expr, vars, width, height, Δy = 1, Δx = 1)
     # Compute the Laplacian of an expression at a point (x, y)
     # by comparing the value of expr at (x, y) with its values at (x±Δ, y) and (x, y±Δ).
