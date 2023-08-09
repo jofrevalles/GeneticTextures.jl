@@ -9,11 +9,8 @@ ternary(cond, x, y) = cond ? x : y
 ternary(cond::Float64, x, y) = Bool(cond) ? x : y # If cond is a float, convert the float to a boolean
 
 function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity)
-    # println("expr: $expr, typeof(expr): $(typeof(expr))")
-    # println("vars: $vars")
     if expr isa Symbol
         if primitives_with_arity[expr] == 0
-            # println("expr: $expr, vars: $vars")
             if vars[expr] isa Number
                 return vars[expr]
             elseif vars[expr] isa Matrix
@@ -32,11 +29,8 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
         # Assume expr is an Expr with head :call
         func = expr.args[1]
         args = expr.args[2:end]
-        # println("expr: $expr, Ref(vars): $(Ref(vars))")
         evaluated_args = custom_eval.(args, Ref(vars), width, height; samplers, primitives_with_arity)
-        # println("func: $func, evaluated_args: $evaluated_args")
-        # println("typeof: $(typeof(func)), typeof(args): $(typeof(args)), evaluated_args[1]: $(evaluated_args[1])")
-        # println("args: $args")
+
         # Check for infinite values in the arguments
         for i in eachindex(evaluated_args)
             arg = evaluated_args[i]
