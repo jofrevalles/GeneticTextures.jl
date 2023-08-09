@@ -333,7 +333,7 @@ F_dB = GeneticTextures.CustomExpr(:(-1.0 * laplacian(B)*A-0.4*neighbor_min(B)))
 # eye1 = (x + 0.05)^2 + (y + 0.05)^2 < 0.01
 # eye2 = (x - 0.05)^2 + (y + 0.05)^2 < 0.01
 # F_A0 = GeneticTextures.CustomExpr(:(ifs(or(or(or(and((x^2 + y^2) < 0.1, (x^2 + y^2) > 0.09), and(and((x^2 + y^2) < 0.05, (x^2 + y^2) > 0.04), and(and(y > 0, x > -0.1), x < 0.1))),and((x + 0.05)^2 + (y + 0.05)^2 < 0.002 ,(x + 0.05)^2 + (y + 0.05)^2 > 0.001)),and((x - 0.05)^2 + (y + 0.05)^2 < 0.002, (x - 0.05)^2 + (y + 0.05)^2 > 0.001)), 0.0, 1.0)))
-F_B0 = GeneticTextures.CustomExpr(:(ifs(and((x^2 + y^2) < 0.1, (x^2 + y^2) > 0.09)), 0.0, 1.0))
+F_B0 = GeneticTextures.CustomExpr(:(ifs(and((x^2 + y^2) < 0.1, (x^2 + y^2) > 0.09), 0.0, 1.0)))
 F_A0 = GeneticTextures.CustomExpr(:(ifs(rand_scalar(18.2345 * (1.0 + y * x)) > 0.99, 0.0, 1)))
 
 ds = DynamicalSystem(F_A0, F_B0, F_dA, F_dB)
