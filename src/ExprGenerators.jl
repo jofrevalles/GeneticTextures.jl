@@ -3,6 +3,7 @@ const primitives_with_arity = Dict(
     :- => 2,
     :* => 2,
     :/ => 2,
+    :^ => 2,
     :sin => 1,
     :cos => 1,
     :sinh => 1,
@@ -14,7 +15,7 @@ const primitives_with_arity = Dict(
     :perlin_color => 4,
     :grad_mag => 1, # grad_mag takes 1 argument, but it can be a function with variable number of arguments
     :grad_dir => 3,
-    # :blur => 3, # blur takes 3 arguments, since currently the first argument has to be a function with 2 arguments
+    :blur => 3, # blur takes 3 arguments, since currently the first argument has to be a function with 2 arguments
     :atan => 2,
     :log => 1,
     :exp => 1,
@@ -25,14 +26,22 @@ const primitives_with_arity = Dict(
     :y => 0,
     :rand_scalar => 0,
     :rand_color => 0,
-    :dissolve => 3
+    :dissolve => 3,
+    :laplacian => 1,
+    :neighbor_min => 1,
+    :ifs => 3,
+    :max => 2,
+    :min => 2,
+    :A => 0,
+    :B => 0,
+    :t => 0
 )
 
 # special_funcs take not only numbers as arguments
 const special_funcs = (
     :grad_mag,
     :grad_dir,
-    # :blur,
+    :blur,
     :perlin_2d,
     :perlin_color
 )
@@ -41,7 +50,8 @@ const special_funcs = (
 const boolean_funcs = (
     :or,
     :and,
-    :xor
+    :xor,
+    :ifs,
 )
 
 # color_funcs are functions that can return a color
@@ -114,6 +124,13 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         elseif f == :grad_mag
             op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
             n_args = primitives_with_arity[op]
+            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
+
+            return Expr(:call, f, args...)
+        elseif f == :blur
+            op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ [:or, :and, :xor, :perlin_2d, :perlin_color, :grad_dir, :grad_mag], collect(primitives_with_arity)))) #maybe disable boolean functions here?
+            n_args = primitives_with_arity[op]
+
             args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
 
             return Expr(:call, f, args...)

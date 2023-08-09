@@ -1,13 +1,28 @@
 using CoherentNoise: sample, perlin_2d
+using Random: seed!
 
-function custom_eval(ce::CustomExpr, vars; samplers = Dict(), primitives_with_arity = primitives_with_arity)
-    return custom_eval(ce.expr, vars; samplers, primitives_with_arity)
+function custom_eval(ce::CustomExpr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity)
+    return custom_eval(ce.expr, vars, width, height; samplers, primitives_with_arity)
 end
 
-function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = primitives_with_arity, )
+ternary(cond, x, y) = cond ? x : y
+ternary(cond::Float64, x, y) = Bool(cond) ? x : y # If cond is a float, convert the float to a boolean
+
+function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity)
+    # println("expr: $expr, typeof(expr): $(typeof(expr))")
+    # println("vars: $vars")
     if expr isa Symbol
         if primitives_with_arity[expr] == 0
-            return vars[expr]
+            # println("expr: $expr, vars: $vars")
+            if vars[expr] isa Number
+                return vars[expr]
+            elseif vars[expr] isa Matrix
+                idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
+                idx_y = (vars[:y]+0.5) * (height-1) + 1 |> trunc |> Int
+                return vars[expr][idx_x, idx_y]
+            else
+                throw(ArgumentError("Invalid type for variable $expr: $(typeof(vars[expr]))"))
+            end
         else
             return safe_getfield(expr) # Return the function associated with the symbol
         end
@@ -17,8 +32,11 @@ function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = prim
         # Assume expr is an Expr with head :call
         func = expr.args[1]
         args = expr.args[2:end]
-        evaluated_args = custom_eval.(args, Ref(vars); samplers)
-
+        # println("expr: $expr, Ref(vars): $(Ref(vars))")
+        evaluated_args = custom_eval.(args, Ref(vars), width, height; samplers, primitives_with_arity)
+        # println("func: $func, evaluated_args: $evaluated_args")
+        # println("typeof: $(typeof(func)), typeof(args): $(typeof(args)), evaluated_args[1]: $(evaluated_args[1])")
+        # println("args: $args")
         # Check for infinite values in the arguments
         for i in eachindex(evaluated_args)
             arg = evaluated_args[i]
@@ -48,6 +66,8 @@ function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = prim
             return evaluated_args[1] .* evaluated_args[2]
         elseif func == :/
             return evaluated_args[1] ./ evaluated_args[2]
+        elseif func == :^
+            return evaluated_args[1] .^ evaluated_args[2]
         elseif func == :sin
             return sin.(evaluated_args[1])
         elseif func == :cos
@@ -98,6 +118,28 @@ function custom_eval(expr, vars; samplers = Dict(), primitives_with_arity = prim
             return dissolve.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
         elseif func == :Color
             return Color(evaluated_args...)
+        elseif func == :rand_scalar
+            seed!(trunc(Int, evaluated_args[1] * 1000))
+            return rand(1) |> first
+        elseif func == :ifs
+            # TODO: maybe check the case with Color in the conditional
+            return ternary.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
+        elseif func == :max
+            return max.(evaluated_args[1], evaluated_args[2])
+        elseif func == :min
+            return min.(evaluated_args[1], evaluated_args[2])
+        elseif func == :<
+            return evaluated_args[1] .< evaluated_args[2]
+        elseif func == :>
+            return evaluated_args[1] .> evaluated_args[2]
+        elseif func == :<=
+            return evaluated_args[1] .<= evaluated_args[2]
+        elseif func == :>=
+            return evaluated_args[1] .>= evaluated_args[2]
+        elseif func == :laplacian
+            return laplacian(args[1], vars, width, height)
+        elseif func == :neighbor_min
+            return neighbor_min(args[1], vars, width, height)
         else
             error("Unknown function: $func")
         end

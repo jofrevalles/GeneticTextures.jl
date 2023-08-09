@@ -7,7 +7,7 @@ function generate_image(expr, width, height)
     for y in 1:height
         for x in 1:width
             vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5)
-            rgb = custom_eval(expr, vars)
+            rgb = custom_eval(expr, vars, width, height)
 
             if rgb isa Color
                 img[y, x] = RGB(rgb.r, rgb.g, rgb.b)
