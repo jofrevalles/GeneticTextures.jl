@@ -87,33 +87,46 @@ function laplacian(expr, vars, width, height; Δx = 1, Δy = 1)
     idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
     idx_y = (vars[:y]+0.5) * (height-1) + 1 |> trunc |> Int
 
-    A_grid = get(vars, :A, 0)
-    B_grid = get(vars, :B, 0)
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
 
-    center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
-
-    if idx_x > 1 && idx_x < width
-        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+Δx, idx_y], :B => B_grid[idx_x+Δx, idx_y])), width, height)
-        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-Δx, idx_y], :B => B_grid[idx_x-Δx, idx_y])), width, height)
-        ∇x = (x_plus + x_minus - 2 * center) / Δx^2
-    elseif idx_x == 1
-        x_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x+Δx, idx_y], :B => B_grid[idx_x+Δx, idx_y])), width, height)
-        ∇x = (x_plus - center) / Δx^2
-    else # idx_x == width
-        x_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x-Δx, idx_y], :B => B_grid[idx_x-Δx, idx_y])), width, height)
-        ∇x = (x_minus - center) / Δx^2
+    if Δx == 0
+        ∇x = 0
+    else
+        if idx_x > 1 && idx_x < width
+            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
+            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
+            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
+            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
+            ∇x = (x_plus + x_minus - 2 * center) / Δx^2
+        elseif idx_x == 1
+            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
+            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
+            ∇x = (x_plus - center) / Δx^2
+        else # idx_x == width
+            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
+            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
+            ∇x = (x_minus - center) / Δx^2
+        end
     end
 
-    if idx_y > 1 && idx_y < height
-        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+Δy], :B => B_grid[idx_x, idx_y+Δy])), width, height)
-        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-Δy], :B => B_grid[idx_x, idx_y-Δy])), width, height)
-        ∇y = (y_plus + y_minus - 2 * center) / Δy^2
-    elseif idx_y == 1
-        y_plus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y+Δy], :B => B_grid[idx_x, idx_y+Δy])), width, height)
-        ∇y = (y_plus - center) / Δy^2
-    else # idx_y == height
-        y_minus = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y-Δy], :B => B_grid[idx_x, idx_y-Δy])), width, height)
-        ∇y = (y_minus - center) / Δy^2
+    if Δy == 0
+        ∇y = 0
+    else
+        if idx_y > 1 && idx_y < height
+            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
+            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
+            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
+            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
+            ∇y = (y_plus + y_minus - 2 * center) / Δy^2
+        elseif idx_y == 1
+            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
+            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
+            ∇y = (y_plus - center) / Δy^2
+        else # idx_y == height
+            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
+            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
+            ∇y = (y_minus - center) / Δy^2
+        end
     end
 
     return ∇x + ∇y
@@ -126,15 +139,13 @@ function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
     idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
     idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
 
-    A_grid = get(vars, :A, 0)
-    B_grid = get(vars, :B, 0)
-
-    center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
     min_val = center
 
     for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
         for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            val = custom_eval(expr, merge(vars, Dict(:A => A_grid[i, j], :B => B_grid[i, j])), width, height)
+            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
+            val = custom_eval(expr, new_vars, width, height)
             if val < min_val
                 min_val = val
             end
@@ -151,15 +162,13 @@ function neighbor_max(expr, vars, width, height; Δx = 1, Δy = 1)
     idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
     idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
 
-    A_grid = get(vars, :A, 0)
-    B_grid = get(vars, :B, 0)
-
-    center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
     max_val = center
 
     for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
         for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            val = custom_eval(expr, merge(vars, Dict(:A => A_grid[i, j], :B => B_grid[i, j])), width, height)
+            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
+            val = custom_eval(expr, new_vars, width, height)
             if val > max_val
                 max_val = val
             end
@@ -176,16 +185,14 @@ function neighbor_ave(expr, vars, width, height; Δx = 1, Δy = 1)
     idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
     idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
 
-    A_grid = get(vars, :A, 0)
-    B_grid = get(vars, :B, 0)
-
-    center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
     sum_val = center
 
     iterations = 1
     for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
         for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            val = custom_eval(expr, merge(vars, Dict(:A => A_grid[i, j], :B => B_grid[i, j])), width, height)
+            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
+            val = custom_eval(expr, new_vars, width, height)
             sum_val += val
             iterations += 1
         end
