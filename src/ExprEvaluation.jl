@@ -119,9 +119,15 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             return dissolve.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
         elseif func == :Color
             return Color(evaluated_args...)
+        elseif func == :Complex
+            return Complex.(evaluated_args...)
         elseif func == :rand_scalar
-            seed!(trunc(Int, evaluated_args[1] * 1000))
-            return rand(1) |> first
+            if length(evaluated_args) == 0
+                return rand(1) |> first
+            else
+                seed!(trunc(Int, evaluated_args[1] * 1000))
+                return rand(1) |> first
+            end
         elseif func == :ifs
             # TODO: maybe check the case with Color in the conditional
             return ternary.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
