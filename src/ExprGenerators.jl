@@ -36,6 +36,7 @@ const primitives_with_arity = Dict(
     :min => 2,
     :A => 0,
     :B => 0,
+    :C => 0,
     :t => 0
 )
 
