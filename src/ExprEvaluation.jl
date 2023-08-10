@@ -149,6 +149,16 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
                 kw_dict = Dict()
             end
             return neighbor_min(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :neighbor_max
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return neighbor_max(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
         elseif func == :neighbor_ave
             positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
 

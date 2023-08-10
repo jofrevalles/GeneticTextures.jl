@@ -144,6 +144,31 @@ function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
     return min_val
 end
 
+function neighbor_max(expr, vars, width, height; Δx = 1, Δy = 1)
+    # Return the largest value from a neighborhood of size (2Δx + 1) x (2Δy + 1)
+    # around the point (x, y)
+
+    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
+    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
+
+    A_grid = get(vars, :A, 0)
+    B_grid = get(vars, :B, 0)
+
+    center = custom_eval(expr, merge(vars, Dict(:A => A_grid[idx_x, idx_y], :B => B_grid[idx_x, idx_y])), width, height)
+    max_val = center
+
+    for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
+        for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
+            val = custom_eval(expr, merge(vars, Dict(:A => A_grid[i, j], :B => B_grid[i, j])), width, height)
+            if val > max_val
+                max_val = val
+            end
+        end
+    end
+
+    return max_val
+end
+
 function neighbor_ave(expr, vars, width, height; Δx = 1, Δy = 1)
     # Return the average from a neighborhood of size (2Δx + 1) x (2Δy + 1)
     # around the point (x, y)
