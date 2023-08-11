@@ -6,9 +6,16 @@ using Base: invokelatest
 
 struct VariableDynamics
     name::Symbol
-    F_0::Union{GeneticTextures.CustomExpr, Symbol, Number, GeneticTextures.Color}
-    δF::Union{GeneticTextures.CustomExpr, Symbol, Number, GeneticTextures.Color}
+    F_0::Union{CustomExpr, Symbol, Number, Color}
+    δF::Union{CustomExpr, Symbol, Number, Color}
+
+    function VariableDynamics(name, F_0, δF)
+        return new(name, F_0, δF)
+    end
 end
+
+VariableDynamics(name::Symbol, F_0::Expr, δF) = VariableDynamics(name, CustomExpr(F_0), δF)
+VariableDynamics(name::Symbol, F_0, δF::Expr) = VariableDynamics(name, F_0, CustomExpr(δF))
 
 name(var::VariableDynamics) = var.name
 F_0(var::VariableDynamics) = var.F_0
@@ -98,7 +105,7 @@ function evolve_system_step!(vars, dynamics::DynamicalSystem, width, height, t, 
 end
 
 function evolve_system_step_2!(vars, dynamics::DynamicalSystem, width, height, t, dt, complex_func::Function)
-    δvars = [Matrix{GeneticTextures.Color}(undef, height, width) for _ in 1:length(dynamics)]
+    δvars = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
 
     variable_dict = merge(Dict(:t => t), Dict(name(ds) => vars[i] for (i, ds) in enumerate(dynamics)))
 
@@ -113,12 +120,12 @@ function evolve_system_step_2!(vars, dynamics::DynamicalSystem, width, height, t
             for (i, ds) in enumerate(dynamics)
                 val =  dt .* custom_eval(δF(ds), variable_dict, width, height)
 
-                if val isa GeneticTextures.Color
+                if val isa Color
                     δvars[i][y_pixel, x_pixel] = val
                 elseif isreal(val)
-                    δvars[i][y_pixel, x_pixel] = GeneticTextures.Color(val, val, val)
+                    δvars[i][y_pixel, x_pixel] = Color(val, val, val)
                 else
-                    δvars[i][y_pixel, x_pixel] = GeneticTextures.Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
+                    δvars[i][y_pixel, x_pixel] = Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
                 end
             end
         end
@@ -189,8 +196,8 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; color_e
     open(expr_file, "w") do f
         write(f, "Animated using 'animate_system' function\n")
         for ds in dynamics
-            write(f, "$(name(ds))_0 = GeneticTextures.CustomExpr($(string(F_0(ds))))\n")
-            write(f, "δ$(name(ds))/δt = GeneticTextures.CustomExpr($(string(δF(ds))))\n")
+            write(f, "$(name(ds))_0 = CustomExpr($(string(F_0(ds))))\n")
+            write(f, "δ$(name(ds))/δt = CustomExpr($(string(δF(ds))))\n")
         end
         write(f, "color_func= $(capture_function(color_expr))\n")
         write(f, "complex_func= $(capture_function(complex_expr))\n")
@@ -236,7 +243,7 @@ function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color
     complex_func = eval(complex_expr)
 
         # Initialize each vars' grid using their F_0 expression
-        vars = [Matrix{GeneticTextures.Color}(undef, height, width) for _ in 1:length(dynamics)]
+        vars = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
         t = 0
         for x_pixel in 1:width
             for y_pixel in 1:height
@@ -246,10 +253,10 @@ function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color
                 for (i, ds) in enumerate(dynamics)
                     val = custom_eval(F_0(ds), Dict(:x => x, :y => y, :t => t), width, height)
 
-                    if val isa GeneticTextures.Color
+                    if val isa Color
                         vars[i][y_pixel, x_pixel] = val
                     else
-                        vars[i][y_pixel, x_pixel] = isreal(val) ? GeneticTextures.Color(val, val, val) : GeneticTextures.Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
+                        vars[i][y_pixel, x_pixel] = isreal(val) ? Color(val, val, val) : Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
                     end
                 end
             end
@@ -277,8 +284,8 @@ function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color
     open(expr_file, "w") do f
         write(f, "Animated using 'animate_system_2' function\n")
         for ds in dynamics
-            write(f, "$(name(ds))_0 = GeneticTextures.CustomExpr($(string(F_0(ds))))\n")
-            write(f, "δ$(name(ds))/δt = GeneticTextures.CustomExpr($(string(δF(ds))))\n")
+            write(f, "$(name(ds))_0 = CustomExpr($(string(F_0(ds))))\n")
+            write(f, "δ$(name(ds))/δt = CustomExpr($(string(δF(ds))))\n")
         end
         write(f, "color_func= $(capture_function(color_expr))\n")
         write(f, "complex_func= $(capture_function(complex_expr))\n")
