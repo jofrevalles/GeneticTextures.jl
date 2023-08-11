@@ -10,12 +10,9 @@ struct VariableDynamics
     δF::Union{CustomExpr, Symbol, Number, Color}
 
     function VariableDynamics(name, F_0, δF)
-        return new(name, F_0, δF)
+        return new(name, CustomExpr(F_0), CustomExpr(δF))
     end
 end
-
-VariableDynamics(name::Symbol, F_0::Expr, δF) = VariableDynamics(name, CustomExpr(F_0), δF)
-VariableDynamics(name::Symbol, F_0, δF::Expr) = VariableDynamics(name, F_0, CustomExpr(δF))
 
 name(var::VariableDynamics) = var.name
 F_0(var::VariableDynamics) = var.F_0
@@ -238,7 +235,7 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; color_e
     println("Expressions saved to: $expr_file")
 end
 
-function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
+function animate_system2(dynamics::DynamicalSystem, width, height, T, dt; color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
     color_func = eval(color_expr)
     complex_func = eval(complex_expr)
 

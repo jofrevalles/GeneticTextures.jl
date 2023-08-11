@@ -15,4 +15,4 @@ B = VariableDynamics(:B, F_B0, F_dB)
 ds = DynamicalSystem([A, B])
 complex_expr = :((c) -> abs(c))
 
-animate_system2(ds, 64, 64, 2.0, 0.1; complex_expr)
+animate_system_2(ds, 64, 64, 2.0, 0.1; complex_expr)
