@@ -3,7 +3,7 @@ module GeneticTextures
 include("Utils.jl")
 
 include("Color.jl")
-export Color, ColorStyle
+export Color, red, blue, green, ColorStyle
 
 include("PerlinBroadcasting.jl")
 include("CustomExpr.jl")

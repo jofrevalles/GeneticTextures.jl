@@ -13,6 +13,10 @@ function Color(v::AbstractVector{T}) where {T<:Real}
     return Color(v[1], v[2], v[3])
 end
 
+red(c::Color) = c.r
+green(c::Color) = c.g
+blue(c::Color) = c.b
+
 struct ColorStyle <: Broadcast.BroadcastStyle end
 
 Base.Broadcast.BroadcastStyle(::Type{<:Color}) = ColorStyle()
