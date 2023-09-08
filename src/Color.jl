@@ -2,13 +2,13 @@ using Base
 using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, broadcasted
 
 # TODO: Consider changing the name of Color, since it can conflict with Images.jl and Colors.jl
-mutable struct Color{T<:Real} <: AbstractArray{T, 1}
+mutable struct Color{T<:Number} <: AbstractArray{T, 1}
     r::T
     g::T
     b::T
 end
 
-function Color(v::AbstractVector{T}) where {T<:Real}
+function Color(v::AbstractVector{T}) where {T<:Number}
     length(v) == 3 || throw(ArgumentError("Vector must have exactly 3 elements"))
     return Color(v[1], v[2], v[3])
 end
@@ -16,6 +16,11 @@ end
 red(c::Color) = c.r
 green(c::Color) = c.g
 blue(c::Color) = c.b
+
+Base.isreal(c::Color) = isreal(c.r) && isreal(c.g) && isreal(c.b)
+Base.real(c::Color) = Color(real(c.r), real(c.g), real(c.b))
+Base.imag(c::Color) = Color(imag(c.r), imag(c.g), imag(c.b))
+Base.abs(c::Color) = Color(abs(c.r), abs(c.g), abs(c.b))
 
 struct ColorStyle <: Broadcast.BroadcastStyle end
 
