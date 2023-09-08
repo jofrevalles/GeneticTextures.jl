@@ -10,7 +10,7 @@ ternary(cond::Float64, x, y) = Bool(cond) ? x : y # If cond is a float, convert 
 function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_with_arity = primitives_with_arity)
     if expr isa Symbol
         if primitives_with_arity[expr] == 0
-            if vars[expr] isa Number
+            if vars[expr] isa Number || vars[expr] isa Color
                 return vars[expr]
             elseif vars[expr] isa Matrix
                 idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
@@ -43,9 +43,16 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             arg = evaluated_args[i]
 
             if arg isa Number || arg isa Color
-                mask_inf = isinf.(arg) .| isnan.(arg)
-                mask_large = arg .> 1e6
-                mask_small = arg .< -1e6
+
+                if arg isa Complex || (arg isa Color && (arg.r isa Complex || arg.g isa Complex || arg.b isa Complex))
+                    mask_inf = isinf.(real.(arg)) .| isnan.(real.(arg)) .| isinf.(imag.(arg)) .| isnan.(imag.(arg))
+                    mask_large = (real.(arg) .> 1e6) .| (imag.(arg) .> 1e6)
+                    mask_small = (real.(arg) .< -1e6) .| (imag.(arg) .< -1e6)
+                else
+                    mask_inf = isinf.(arg) .| isnan.(arg)
+                    mask_large = arg .> 1e6
+                    mask_small = arg .< -1e6
+                end
 
                 new_arg = map((m, a) -> ifelse(m, 0.0, a), mask_inf, arg)
                 new_arg = map((m, a) -> ifelse(m, 1.0, a), mask_large, new_arg)
@@ -54,7 +61,11 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
                 if new_arg isa Number
                     evaluated_args[i] = new_arg
                 else
-                    evaluated_args[i] = Color(new_arg...)
+                    if arg isa Color && (arg.r isa Complex || arg.g isa Complex || arg.b isa Complex)
+                        evaluated_args[i] = Color(Complex.(new_arg...))
+                    else
+                        evaluated_args[i] = Color(new_arg...)
+                    end
                 end
             end
         end
@@ -73,6 +84,10 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             return sin.(evaluated_args[1])
         elseif func == :cos
             return cos.(evaluated_args[1])
+        elseif func == :round
+            return round.(evaluated_args[1])
+        elseif func == :Int
+            return Int(evaluated_args[1])
         elseif func == :sinh
             return sinh.(evaluated_args[1])
         elseif func == :cosh
@@ -134,7 +149,11 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
         elseif func == :max
             return max.(evaluated_args[1], evaluated_args[2])
         elseif func == :min
-            return min.(evaluated_args[1], evaluated_args[2])
+            if evaluated_args[1] isa Complex || evaluated_args[2] isa Complex
+                return min.(real.(evaluated_args[1]), real.(evaluated_args[2])) + min.(imag.(evaluated_args[1]), imag.(evaluated_args[2])) * im
+            else
+                return min.(evaluated_args[1], evaluated_args[2])
+            end
         elseif func == :<
             return evaluated_args[1] .< evaluated_args[2]
         elseif func == :>
@@ -143,8 +162,58 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             return evaluated_args[1] .<= evaluated_args[2]
         elseif func == :>=
             return evaluated_args[1] .>= evaluated_args[2]
+        # elseif func == :laplacian
+        #     return laplacian(args[1], vars, width, height)
         elseif func == :laplacian
-            return laplacian(args[1], vars, width, height)
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return laplacian(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :x_grad
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return x_grad(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :y_grad
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return y_grad(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :grad_magnitude
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return grad_magnitude(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
+        elseif func == :grad_direction
+            positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
+
+            if any(a -> a isa Expr && a.head == :parameters, args) # Extract keyword arguments
+                kwargs_expr = first(filter(a -> a isa Expr && a.head == :parameters, args))
+                kw_dict = custom_eval(kwargs_expr, vars, width, height; samplers, primitives_with_arity)
+            else
+                kw_dict = Dict()
+            end
+            return grad_direction(positional_args[1], vars, width, height; kw_dict...)  # Call the function with positional and keyword arguments
         elseif func == :neighbor_min
             positional_args = filter(a -> !(a isa Expr && (a.head == :(=) || a.head == :parameters)), args) # Extract positional arguments
 

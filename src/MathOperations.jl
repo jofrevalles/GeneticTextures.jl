@@ -101,7 +101,7 @@ function laplacian(expr, vars, width, height; Δx = 1, Δy = 1)
         elseif idx_x == 1
             vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
             x_plus = custom_eval(expr, vars_plus_Δx, width, height)
-            ∇x = (x_plus - center) / Δx^2
+            ∇x = (x_plus.- center) / Δx^2
         else # idx_x == width
             vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
             x_minus = custom_eval(expr, vars_minus_Δx, width, height)
@@ -130,6 +130,68 @@ function laplacian(expr, vars, width, height; Δx = 1, Δy = 1)
     end
 
     return ∇x + ∇y
+end
+
+function x_grad(expr, vars, width, height; Δx = 1)
+    idx_x = (vars[:x] + 0.5) * (width - 1) + 1 |> trunc |> Int
+    idx_y = (vars[:y] + 0.5) * (height - 1) + 1 |> trunc |> Int
+
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
+
+    if Δx == 0
+        return 0
+    else
+        if idx_x > 1 && idx_x < width
+            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
+            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
+            return (x_plus - center) / Δx
+        elseif idx_x == 1
+            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
+            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
+            return (x_plus - center) / Δx
+        else # idx_x == width
+            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
+            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
+            return (center - x_minus) / Δx
+        end
+    end
+end
+
+function y_grad(expr, vars, width, height; Δy = 1)
+    idx_x = (vars[:x] + 0.5) * (width - 1) + 1 |> trunc |> Int
+    idx_y = (vars[:y] + 0.5) * (height - 1) + 1 |> trunc |> Int
+
+    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
+
+    if Δy == 0
+        return 0
+    else
+        if idx_y > 1 && idx_y < height
+            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
+            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
+            return (y_plus - center) / Δy
+        elseif idx_y == 1
+            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
+            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
+            return (y_plus - center) / Δy
+        else # idx_y == height
+            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
+            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
+            return (center - y_minus) / Δy
+        end
+    end
+end
+
+function grad_magnitude(expr, vars, width, height; Δx = 1, Δy = 1)
+    ∂f_∂x = x_grad(expr, vars, width, height; Δx = Δx)
+    ∂f_∂y = y_grad(expr, vars, width, height; Δy = Δy)
+    return sqrt.(∂f_∂x .^ 2 + ∂f_∂y .^ 2)
+end
+
+function grad_direction(expr, vars, width, height; Δx = 1, Δy = 1)
+    ∂f_∂x = x_grad(expr, vars, width, height; Δx = Δx)
+    ∂f_∂y = y_grad(expr, vars, width, height; Δy = Δy)
+    return atan.(∂f_∂y, ∂f_∂x)
 end
 
 function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
