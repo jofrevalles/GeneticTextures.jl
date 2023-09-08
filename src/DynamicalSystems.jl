@@ -1,7 +1,6 @@
 using FileIO
 using Images
 using Colors
-using GeneticTextures: capture_function, red, green, blue
 using Base: invokelatest
 
 struct VariableDynamics
@@ -235,7 +234,7 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; color_e
     println("Expressions saved to: $expr_file")
 end
 
-function animate_system2(dynamics::DynamicalSystem, width, height, T, dt; color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
+function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
     color_func = eval(color_expr)
     complex_func = eval(complex_expr)
 
@@ -302,7 +301,9 @@ function animate_system2(dynamics::DynamicalSystem, width, height, T, dt; color_
         for x_pixel in 1:width
             for y_pixel in 1:height
                 values = [var[y_pixel, x_pixel] for var in vars]
-                img[y_pixel, x_pixel] = invokelatest(color_func, values...)
+
+                img[y_pixel, x_pixel] =
+                 invokelatest(color_func, [isreal(val) ? val : invokelatest(complex_func, val) for val in values]...)
             end
         end
 
