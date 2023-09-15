@@ -234,29 +234,29 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; color_e
     println("Expressions saved to: $expr_file")
 end
 
-function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
+function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; normalize_img = false, color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
     color_func = eval(color_expr)
     complex_func = eval(complex_expr)
 
-        # Initialize each vars' grid using their F_0 expression
-        vars = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
-        t = 0
-        for x_pixel in 1:width
-            for y_pixel in 1:height
-                x = (x_pixel - 1) / (width - 1) - 0.5
-                y = (y_pixel - 1) / (height - 1) - 0.5
+    # Initialize each vars' grid using their F_0 expression
+    vars = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
+    t = 0
+    for x_pixel in 1:width
+        for y_pixel in 1:height
+            x = (x_pixel - 1) / (width - 1) - 0.5
+            y = (y_pixel - 1) / (height - 1) - 0.5
 
-                for (i, ds) in enumerate(dynamics)
-                    val = custom_eval(F_0(ds), Dict(:x => x, :y => y, :t => t), width, height)
+            for (i, ds) in enumerate(dynamics)
+                val = custom_eval(F_0(ds), Dict(:x => x, :y => y, :t => t), width, height)
 
-                    if val isa Color
-                        vars[i][y_pixel, x_pixel] = val
-                    else
-                        vars[i][y_pixel, x_pixel] = isreal(val) ? Color(val, val, val) : Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
-                    end
+                if val isa Color
+                    vars[i][y_pixel, x_pixel] = val
+                else
+                    vars[i][y_pixel, x_pixel] = isreal(val) ? Color(val, val, val) : Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
                 end
             end
         end
+    end
 
     # Generate a unique filename
     base_dir = "saves"
@@ -305,6 +305,10 @@ function animate_system_2(dynamics::DynamicalSystem, width, height, T, dt; color
                 img[y_pixel, x_pixel] =
                  invokelatest(color_func, [isreal(val) ? val : invokelatest(complex_func, val) for val in values]...)
             end
+        end
+
+        if normalize_img
+            img = clean!(img)
         end
 
         frame_file = animation_dir * "/frame_$(lpad(i, 5, '0')).png"
