@@ -95,3 +95,5 @@ end
 
 using Colors
 Colors.RGB(c::GeneticTextures.Color) = RGB(c.r, c.g, c.b)
+
+Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
