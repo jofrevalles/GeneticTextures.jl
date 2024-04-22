@@ -25,7 +25,11 @@ function generate_image(expr, width, height)
 end
 
 # TODO: Maybe normalize each channel separately?
+
+clean!(img::Matrix{Color}) = clean!(RGB.(img)) # convert img to RGB and call clean! again
+
 function clean!(img)
+    # @show typeof(img), img
     # normalize img to be in [0, 1]
     (min_val, _), (_, max_val) = extrema((p -> (min(p.r, p.g, p.b), max(p.r, p.g, p.b))).(img))
 
