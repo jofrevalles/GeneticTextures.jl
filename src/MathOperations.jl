@@ -141,7 +141,7 @@ function x_grad(expr, vars, width, height; Δx = 1)
     if Δx == 0
         return 0
     else
-        if idx_x > 1 && idx_x < width
+        if idx_x > 1 && idx_x <= width - Δx
             vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
             x_plus = custom_eval(expr, vars_plus_Δx, width, height)
             return (x_plus - center) / Δx
@@ -166,7 +166,7 @@ function y_grad(expr, vars, width, height; Δy = 1)
     if Δy == 0
         return 0
     else
-        if idx_y > 1 && idx_y < height
+        if idx_y > 1 && idx_y <= height - Δy
             vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
             y_plus = custom_eval(expr, vars_plus_Δy, width, height)
             return (y_plus - center) / Δy
@@ -231,8 +231,15 @@ function neighbor_max(expr, vars, width, height; Δx = 1, Δy = 1)
         for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
             new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
             val = custom_eval(expr, new_vars, width, height)
-            if val > max_val
-                max_val = val
+
+            if isreal(val) && isreal(max_val)
+                if val > max_val
+                    max_val = val
+                end
+            else
+                if abs(val) > abs(max_val)
+                    max_val = val
+                end
             end
         end
     end
