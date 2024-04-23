@@ -136,6 +136,10 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             return Color(evaluated_args...)
         elseif func == :Complex
             return Complex.(evaluated_args...)
+        elseif func == :real
+            return real.(evaluated_args...)
+        elseif func == :imag
+            return imag.(evaluated_args...)
         elseif func == :rand_scalar
             if length(evaluated_args) == 0
                 return rand(1) |> first
@@ -147,12 +151,16 @@ function custom_eval(expr, vars, width, height; samplers = Dict(), primitives_wi
             # TODO: maybe check the case with Color in the conditional
             return ternary.(evaluated_args[1], evaluated_args[2], evaluated_args[3])
         elseif func == :max
-            return max.(evaluated_args[1], evaluated_args[2])
+            if isreal(evaluated_args[1]) && isreal(evaluated_args[2])
+                return max.(evaluated_args[1], evaluated_args[2])
+            else
+                return max.(real.(evaluated_args[1]), real.(evaluated_args[2])) + max.(imag.(evaluated_args[1]), imag.(evaluated_args[2])) * im
+            end
         elseif func == :min
             if evaluated_args[1] isa Complex || evaluated_args[2] isa Complex
                 return min.(real.(evaluated_args[1]), real.(evaluated_args[2])) + min.(imag.(evaluated_args[1]), imag.(evaluated_args[2])) * im
             else
-                return min.(evaluated_args[1], evaluated_args[2])
+                return min.(real.(evaluated_args[1]), real.(evaluated_args[2]))
             end
         elseif func == :<
             return evaluated_args[1] .< evaluated_args[2]
