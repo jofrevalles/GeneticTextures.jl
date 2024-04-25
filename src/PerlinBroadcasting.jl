@@ -2,6 +2,7 @@ using CoherentNoise
 using Base
 using Base.Broadcast
 
+# Is all this necessary ? ... I think it is not
 struct PerlinStyle <: Broadcast.BroadcastStyle end
 
 Base.Broadcast.BroadcastStyle(::Type{<:CoherentNoise.Perlin{2}}) = PerlinStyle()
