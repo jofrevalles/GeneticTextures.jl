@@ -40,3 +40,10 @@ function capture_function(func_expr::Expr)
 
     return strip(cleaned_str)
 end
+
+# Helper function to create meshgrid
+function meshgrid(x, y)
+    X = repeat(reshape(x, 1, :), length(y), 1)
+    Y = repeat(reshape(y, :, 1), 1, length(x))
+    return X, Y
+end
