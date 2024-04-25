@@ -1,37 +1,34 @@
-using ForwardDiff: gradient, derivative
+using Random
 
-function threshold(x, t = 0.5)
-    return x >= t ? 1 : 0
+ternary(cond, x, y) = cond ? x : y
+ternary(cond::Float64, x, y) = Bool(cond) ? x : y # If cond is a float, convert the float to a boolean
+
+threshold(x, t = 0.5) = x >= t ? 1 : 0
+
+function rand_scalar(args...)
+    if length(args) == 0
+        return rand(1) |> first
+    else
+        # TODO: Fix the seed fix, right now it will create a homogeneous image
+        seed!(trunc(Int, args[1] * 1000))
+        return rand(1) |> first
+    end
+end
+
+function rand_color(args...)
+    if length(args) == 0
+        return Color(rand(3)...)
+    else
+        # TODO: Fix the seed fix, right now it will create a homogeneous image
+        seed!(trunc(Int, args[1] * 1000))
+        return Color(rand(3)...)
+    end
 end
 
 function apply_elementwise(op, args...)
     is_color = any(x -> x isa Color, args)
     result = op.(args...)
     return is_color ? Color(result) : result
-end
-
-function grad_dir(f, x, y)
-    """
-    Compute the gradient of f and return the direction of the gradient (in radians).
-    """
-
-    g = gradient(z -> f(z[1], z[2]), [x, y])
-    return atan(g[2], g[1])
-end
-
-function grad_mag(f, coords::Vararg{Number})
-    """
-    Compute the gradient of f and return the magnitude of the gradient.
-    """
-
-    if f == log
-        f = x -> log(abs(x))
-    elseif f == sqrt
-        f = x -> sqrt(abs(x))
-    end
-
-    g = gradient(c -> f(c...), collect(coords))
-    return sqrt(sum(x^2 for x in g))
 end
 
 function dissolve(f1, f2, weight)
@@ -80,105 +77,40 @@ function gaussian_kernel(size, sigma)
     return kernel
 end
 
-function laplacian(expr, vars, width, height; Δx = 1, Δy = 1)
-    # Compute the Laplacian of an expression at a point (x, y)
-    # by comparing the value of expr at (x, y) with its values at (x±Δ, y) and (x, y±Δ).
+function x_grad(func, vars, width, height; Δx = 1)
+    x_val = vars[:x]
+    Δx_scaled = Δx / (width - 1)  # scale Δx to be proportional to the image width
 
-    idx_x = (vars[:x]+0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y]+0.5) * (height-1) + 1 |> trunc |> Int
+    idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
 
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
+    # Evaluate function at x
+    center_val = func(merge(vars, Dict(:x => x_val)))
 
-    if Δx == 0
-        ∇x = 0
+    if idx_x == width
+        x_minus_val = func(merge(vars, Dict(:x => x_val - Δx_scaled))) # Evaluate function at x - Δx
+        return (center_val - x_minus_val) / Δx_scaled
     else
-        if idx_x > 1 && idx_x < width
-            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
-            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
-            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
-            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
-            ∇x = (x_plus + x_minus - 2 * center) / Δx^2
-        elseif idx_x == 1
-            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
-            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
-            ∇x = (x_plus.- center) / Δx^2
-        else # idx_x == width
-            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
-            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
-            ∇x = (x_minus - center) / Δx^2
-        end
-    end
-
-    if Δy == 0
-        ∇y = 0
-    else
-        if idx_y > 1 && idx_y < height
-            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
-            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
-            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
-            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
-            ∇y = (y_plus + y_minus - 2 * center) / Δy^2
-        elseif idx_y == 1
-            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
-            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
-            ∇y = (y_plus - center) / Δy^2
-        else # idx_y == height
-            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
-            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
-            ∇y = (y_minus - center) / Δy^2
-        end
-    end
-
-    return ∇x + ∇y
-end
-
-function x_grad(expr, vars, width, height; Δx = 1)
-    idx_x = (vars[:x] + 0.5) * (width - 1) + 1 |> trunc |> Int
-    idx_y = (vars[:y] + 0.5) * (height - 1) + 1 |> trunc |> Int
-
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
-
-    if Δx == 0
-        return 0
-    else
-        if idx_x > 1 && idx_x <= width - Δx
-            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
-            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
-            return (x_plus - center) / Δx
-        elseif idx_x == 1
-            vars_plus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x + Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x + Δx))
-            x_plus = custom_eval(expr, vars_plus_Δx, width, height)
-            return (x_plus - center) / Δx
-        else # idx_x == width
-            vars_minus_Δx = merge(Dict(k => (isa(v, Matrix) ? v[idx_x - Δx, idx_y] : v) for (k, v) in vars), Dict(:x => idx_x - Δx))
-            x_minus = custom_eval(expr, vars_minus_Δx, width, height)
-            return (center - x_minus) / Δx
-        end
+        x_plus_val = func(merge(vars, Dict(:x => x_val + Δx_scaled))) # Evaluate function at x + Δx
+        return (x_plus_val - center_val) / Δx_scaled
     end
 end
 
-function y_grad(expr, vars, width, height; Δy = 1)
-    idx_x = (vars[:x] + 0.5) * (width - 1) + 1 |> trunc |> Int
-    idx_y = (vars[:y] + 0.5) * (height - 1) + 1 |> trunc |> Int
+function y_grad(func, vars, width, height; Δy = 1)
+    y_val = vars[:y]
+    Δy_scaled = Δy / (height - 1)  # scale Δy to be proportional to the image height
 
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
+    idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
 
-    if Δy == 0
-        return 0
+    # Evaluate function at y
+    center_val = func(merge(vars, Dict(:y => y_val)))
+
+    # Compute the finite difference
+    if idx_y == height
+        y_minus = func(merge(vars, Dict(:y => y_val - Δy_scaled))) # Evaluate function at y - Δy
+        return (center_val - y_minus) / Δy_scaled
     else
-        if idx_y > 1 && idx_y <= height - Δy
-            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
-            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
-            return (y_plus - center) / Δy
-        elseif idx_y == 1
-            vars_plus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y + Δy] : v) for (k, v) in vars), Dict(:y => idx_y + Δy))
-            y_plus = custom_eval(expr, vars_plus_Δy, width, height)
-            return (y_plus - center) / Δy
-        else # idx_y == height
-            vars_minus_Δy = merge(Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y - Δy] : v) for (k, v) in vars), Dict(:y => idx_y - Δy))
-            y_minus = custom_eval(expr, vars_minus_Δy, width, height)
-            return (center - y_minus) / Δy
-        end
+        y_plus_val = func(merge(vars, Dict(:y => y_val + Δy_scaled))) # Evaluate function at y + Δy
+        return (y_plus_val - center_val) / Δy_scaled
     end
 end
 
@@ -194,78 +126,187 @@ function grad_direction(expr, vars, width, height; Δx = 1, Δy = 1)
     return atan.(∂f_∂y, ∂f_∂x)
 end
 
-function neighbor_min(expr, vars, width, height; Δx = 1, Δy = 1)
-    # Return the smalles value from a neighborhood of size (2Δx + 1) x (2Δy + 1)
-    # around the point (x, y)
+function laplacian(func, vars, width, height; Δx = 1, Δy = 1)
+    x_val = vars[:x]
+    y_val = vars[:y]
 
-    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
+    Δx_scaled = Δx / (width - 1)  # scale Δx to be proportional to the image width
+    Δy_scaled = Δy / (height - 1)  # scale Δy to be proportional to the image height
 
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
-    min_val = center
+    idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
+    idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
 
-    for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
-        for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
-            val = custom_eval(expr, new_vars, width, height)
-            if val < min_val
-                min_val = val
-            end
+    center_val = func(merge(vars, Dict(:x => x_val, :y => y_val)))
+
+    if Δx == 0
+        ∇x = 0
+    else
+        if idx_x > 1 && idx_x < width
+            x_plus_val = func(merge(vars, Dict(:x => x_val + Δx_scaled, :y => y_val)))
+            x_minus_val = func(merge(vars, Dict(:x => x_val - Δx_scaled, :y => y_val)))
+            ∇x = (x_plus_val + x_minus_val - 2 * center_val) / Δx_scaled^2
+        elseif idx_x == 1
+            x_plus = func(merge(vars, Dict(:x => x_val + Δx_scaled, :y => y_val)))
+            ∇x = (x_plus - center_val) / Δx_scaled^2
+        else # idx_x == width
+            x_minus = func(merge(vars, Dict(:x => x_val - Δx_scaled, :y => y_val)))
+            ∇x = (center_val - x_minus) / Δx_scaled^2
+        end
+    end
+
+    if Δy == 0
+        ∇y = 0
+    else
+        if idx_y > 1 && idx_y < height
+            y_plus_val = func(merge(vars, Dict(:x => x_val, :y => y_val + Δy_scaled)))
+            y_minus_val = func(merge(vars, Dict(:x => x_val, :y => y_val - Δy_scaled)))
+            ∇y = (y_plus_val + y_minus_val - 2 * center_val) / Δy_scaled^2
+        elseif idx_y == 1
+            y_plus = func(merge(vars, Dict(:x => x_val, :y => y_val + Δy_scaled)))
+            ∇y = (y_plus - center_val) / Δy_scaled^2
+        else # idx_y == height
+            y_minus = func(merge(vars, Dict(:x => x_val, :y => y_val - Δy_scaled)))
+            ∇y = (center_val - y_minus) / Δy_scaled^2
+        end
+    end
+
+    return ∇x + ∇y
+end
+
+# Return the smalles value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
+function neighbor_min(func, vars, width, height; Δx = 1, Δy = 1)
+    # Initialize the center values
+    x_val = vars[:x]
+    y_val = vars[:y]
+
+    min_val = func(vars)  # Directly use vars, no need to merge if x, y are already set
+
+    # Temporary variables to avoid repeated dictionary updates
+    temp_vars = copy(vars)
+
+    # if there are any Matrix in vars values, then filter the iterations
+    range_x = -Δx:Δx
+    range_y = -Δy:Δy
+
+
+    if any([isa(v, Matrix) for v in values(vars)])
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+
+        # Filter the iterations that are not in the matrix
+        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
+        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
+    end
+
+    # Evaluate neighborhood
+    for dx in range_x, dy in range_y
+        if dx == 0 && dy == 0
+            continue
+        end
+
+        temp_vars[:x] = x_val + dx / (width - 1)
+        temp_vars[:y] = y_val + dy / (height - 1)
+
+        val = func(temp_vars)
+        if val < min_val
+            min_val = val
         end
     end
 
     return min_val
 end
 
-function neighbor_max(expr, vars, width, height; Δx = 1, Δy = 1)
-    # Return the largest value from a neighborhood of size (2Δx + 1) x (2Δy + 1)
-    # around the point (x, y)
+# Return the largest value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
+function neighbor_max(func, vars, width, height; Δx = 1, Δy = 1)
+    # Initialize the center values
+    x_val = vars[:x]
+    y_val = vars[:y]
 
-    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
+    max_val = func(vars)
 
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
-    max_val = center
+    # Temporary variables to avoid repeated dictionary updates
+    temp_vars = copy(vars)
 
-    for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
-        for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
-            val = custom_eval(expr, new_vars, width, height)
+    # if there are any Matrix in vars values, then filter the iterations
+    range_x = -Δx:Δx
+    range_y = -Δy:Δy
 
-            if isreal(val) && isreal(max_val)
-                if val > max_val
-                    max_val = val
-                end
-            else
-                if abs(val) > abs(max_val)
-                    max_val = val
-                end
-            end
+    if any([isa(v, Matrix) for v in values(vars)])
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+
+        # Filter the iterations that are not in the matrix
+        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
+        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
+    end
+
+    # Evaluate neighborhood
+    for dx in range_x, dy in range_y
+        if dx == 0 && dy == 0
+            continue
+        end
+
+        temp_vars[:x] = x_val + dx / (width - 1)
+        temp_vars[:y] = y_val + dy / (height - 1)
+
+        val = func(temp_vars)
+        if val > max_val
+            max_val = val
         end
     end
 
     return max_val
 end
 
-function neighbor_ave(expr, vars, width, height; Δx = 1, Δy = 1)
-    # Return the average from a neighborhood of size (2Δx + 1) x (2Δy + 1)
-    # around the point (x, y)
+# Return the average value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
+function neighbor_ave(func, vars, width, height; Δx = 1, Δy = 1)
+    # Initialize the center values
+    x_val = vars[:x]
+    y_val = vars[:y]
 
-    idx_x = (vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int
-    idx_y = (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int
+    sum_val = func(vars)
+    count = 1
 
-    center = custom_eval(expr, merge(vars, Dict(k => (isa(v, Matrix) ? v[idx_x, idx_y] : v) for (k, v) in vars)), width, height)
-    sum_val = center
+    # Temporary variables to avoid repeated dictionary updates
+    temp_vars = copy(vars)
 
-    iterations = 1
-    for i in filter(x -> x > 0 && x != idx_x && x <= width, idx_x-Δx:idx_x+Δx)
-        for j in filter(y -> y > 0 && y != idx_y && y <= height, idx_y-Δy:idx_y+Δy)
-            new_vars = merge(Dict(k => (isa(v, Matrix) ? v[i, j] : v) for (k, v) in vars), Dict(:x => i, :y => j))
-            val = custom_eval(expr, new_vars, width, height)
-            sum_val += val
-            iterations += 1
-        end
+    # if there are any Matrix in vars values, then filter the iterations
+    range_x = -Δx:Δx
+    range_y = -Δy:Δy
+
+    if any([isa(v, Matrix) for v in values(vars)])
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+
+        # Filter the iterations that are not in the matrix
+        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
+        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
     end
 
-    return sum_val / iterations
+    # Evaluate neighborhood
+    for dx in range_x, dy in range_y
+        if dx == 0 && dy == 0
+            continue
+        end
+
+        temp_vars[:x] = x_val + dx / (width - 1)
+        temp_vars[:y] = y_val + dy / (height - 1)
+
+        sum_val += func(temp_vars)
+        count += 1
+    end
+
+    return sum_val / count
 end
+
+# This dictionary indicates which functions are gradient-related and need special handling
+gradient_functions = Dict(
+    :grad_magnitude => grad_magnitude,
+    :grad_direction => grad_direction,
+    :x_grad => x_grad,
+    :y_grad => y_grad,
+    :laplacian => laplacian,
+    :neighbor_min => neighbor_min,
+    :neighbor_max => neighbor_max,
+    :neighbor_ave => neighbor_ave
+)
