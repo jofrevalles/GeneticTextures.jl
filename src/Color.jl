@@ -1,5 +1,6 @@
 using Base
 using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, broadcasted
+import Base: sin, cos, tan, +, -, *, /, ^, sqrt, exp, log, abs, atan, asin, acos, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round, max, min
 
 # TODO: Consider changing the name of Color, since it can conflict with Images.jl and Colors.jl
 mutable struct Color{T<:Number} <: AbstractArray{T, 1}
@@ -97,3 +98,24 @@ using Colors
 Colors.RGB(c::GeneticTextures.Color) = RGB(c.r, c.g, c.b)
 
 Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
+
+unary_functions = [sin, cos, tan, sqrt, exp, log, abs, asin, acos, atan, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round]
+binary_functions = [+, -, *, /, ^, atan, mod, rem, fld, cld, ceil, floor, round, max, min]
+
+# Automatically define methods
+for func in unary_functions
+    func = Symbol(func)
+    @eval begin
+        ($func)(c::Color) = Base.broadcast($func, c)
+    end
+end
+
+for func in binary_functions
+    func = Symbol(func)  # Get the function name symbol
+
+    @eval begin
+        ($func)(c1::Color, c2::Color) =  Base.broadcast($func, c1, c2)
+        ($func)(c::Color, x::Number) = Base.broadcast($func, c, x)
+        ($func)(x::Number, c::Color) = Base.broadcast($func, x, c)
+    end
+end
