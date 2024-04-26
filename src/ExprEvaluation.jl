@@ -54,7 +54,7 @@ function convert_expr(expr, custom_operations, primitives_with_arity, gradient_f
         if get(primitives_with_arity, expr, 1) == 0
             return :(vars[$(QuoteNode(expr))])
         elseif get(primitives_with_arity, expr, 1) == -1
-            return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int])
+            return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> round |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> round |> Int])
         else
             return expr
         end

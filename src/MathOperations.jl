@@ -81,7 +81,7 @@ function x_grad(func, vars, width, height; Δx = 1)
     x_val = vars[:x]
     Δx_scaled = Δx / (width - 1)  # scale Δx to be proportional to the image width
 
-    idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
+    idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
 
     # Evaluate function at x
     center_val = func(merge(vars, Dict(:x => x_val)))
@@ -99,7 +99,7 @@ function y_grad(func, vars, width, height; Δy = 1)
     y_val = vars[:y]
     Δy_scaled = Δy / (height - 1)  # scale Δy to be proportional to the image height
 
-    idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+    idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
     # Evaluate function at y
     center_val = func(merge(vars, Dict(:y => y_val)))
@@ -133,8 +133,8 @@ function laplacian(func, vars, width, height; Δx = 1, Δy = 1)
     Δx_scaled = Δx / (width - 1)  # scale Δx to be proportional to the image width
     Δy_scaled = Δy / (height - 1)  # scale Δy to be proportional to the image height
 
-    idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
-    idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+    idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
+    idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
     center_val = func(merge(vars, Dict(:x => x_val, :y => y_val)))
 
@@ -190,8 +190,8 @@ function neighbor_min(func, vars, width, height; Δx = 1, Δy = 1)
 
 
     if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
         # Filter the iterations that are not in the matrix
         range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
@@ -232,8 +232,8 @@ function neighbor_max(func, vars, width, height; Δx = 1, Δy = 1)
     range_y = -Δy:Δy
 
     if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
         # Filter the iterations that are not in the matrix
         range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
@@ -275,8 +275,8 @@ function neighbor_ave(func, vars, width, height; Δx = 1, Δy = 1)
     range_y = -Δy:Δy
 
     if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> trunc |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> trunc |> Int
+        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
+        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
         # Filter the iterations that are not in the matrix
         range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
