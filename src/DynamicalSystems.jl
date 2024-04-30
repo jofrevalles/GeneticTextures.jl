@@ -24,7 +24,11 @@ end
 Base.length(ds::DynamicalSystem) = length(ds.dynamics)
 Base.iterate(ds::DynamicalSystem, state = 1) = state > length(ds.dynamics) ? nothing : (ds.dynamics[state], state + 1)
 
-function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, width, height, t, dt, complex_func::Function; renderer = :threaded, kwargs...)
+function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, w, h, t, dt, complex_func::Function; renderer = :threaded, kwargs...)
+    # TODO: Find a better way to pass these arguments to the function
+    global width = w
+    global height = h
+
     if renderer == :basic
         return evolve_system_basic!(vals, dynamics, genetic_funcs, width, height, t, dt, complex_func)
     elseif renderer == :threaded
@@ -38,7 +42,7 @@ function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, width, h
     end
 end
 
-function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normalize_img = false, plot = true, renderer = :threaded, color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
+function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normalize_img = false, adjust_brighness = true, plot = true, renderer = :threaded, color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
     color_func = eval(color_expr)
     complex_func = eval(complex_expr)
 
@@ -122,9 +126,9 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normali
             end
         end
 
-        normalize_img && GeneticTextures.clean!(img) # Clean the image if requested
+        normalize_img && clean!(img) # Clean the image if requested
+        adjust_brighness && adjust_brightness!(img) # Adjust the brightness if requested
 
-        # if plot, display(img)
         plot && display(img)
 
         frame_file = animation_dir * "/frame_$(lpad(i, 5, '0')).png"
