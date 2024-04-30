@@ -128,13 +128,15 @@ function generate_image_vectorized(func, width::Int, height::Int; clean = true)
 
     img = broadcast((x, y) -> invokelatest(func, Dict(:x => x, :y => y)), X, Y)
 
-    is_color = [r isa Color for r in img]
-    img[is_color] = RGB.(red.(img[is_color]), green.(img[is_color]), blue.(img[is_color]))
-    img[!is_color] = RGB.(img[!is_color], img[!is_color], img[!is_color])
+    output = Array{RGB{Float64}, 2}(undef, height, width)
 
-    clean && clean!(img)
-    display(img)
-    return img
+    is_color = [r isa Color for r in img]
+    output[is_color] = RGB.(red.(img[is_color]), green.(img[is_color]), blue.(img[is_color]))
+    output[.!is_color] = RGB.(img[.!is_color], img[.!is_color], img[.!is_color])
+
+    clean && clean!(output)
+    display(output)
+    return output
 end
 
 function generate_image_vectorized_threaded(func, width::Int, height::Int; clean = true, n_blocks = Threads.nthreads() * 4)
