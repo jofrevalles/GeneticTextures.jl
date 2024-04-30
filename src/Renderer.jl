@@ -25,6 +25,33 @@ function clean!(img)
 
     return img
 end
+# Function to adjust the brightness of an image to a specific target value using luminosity weights
+function adjust_brightness!(img::Matrix{RGB{Float64}}; target_brightness::Float64=0.71)
+    # Calculate current average brightness using weighted luminosity
+    current_brightness = mean([0.299*p.r + 0.587*p.g + 0.114*p.b for p in img])
+
+    # Avoid division by zero and unnecessary adjustments
+    if current_brightness > 0 && target_brightness > 0
+        scale_factor = target_brightness / current_brightness
+    else
+        return img  # Return image as is if brightness is zero or target is zero
+    end
+
+    # Adjust each pixel's RGB values based on the scale factor
+    for y in 1:size(img, 1)
+        for x in 1:size(img, 2)
+            r = img[y, x].r * scale_factor
+            g = img[y, x].g * scale_factor
+            b = img[y, x].b * scale_factor
+
+            # Clamp values to the range [0, 1] and handle any NaNs that might appear
+            img[y, x] = RGB(clamp(r, 0, 1), clamp(g, 0, 1), clamp(b, 0, 1))
+        end
+    end
+
+    return img
+end
+
 
 function save_image_and_expr(img::Matrix{T}, genetic_expr::GeneticExpr; folder = "saves", prefix = "images") where {T}
     # Create the folder if it doesn't exist
