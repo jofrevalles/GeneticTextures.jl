@@ -127,7 +127,7 @@ function compile_expr(expr::Symbol, custom_operations::Dict, primitives_with_ari
     if get(primitives_with_arity, expr, 1) == 0
         return :(vars[$(QuoteNode(expr))])
     elseif get(primitives_with_arity, expr, 1) == -1
-        return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> trunc |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> trunc |> Int])
+        return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> round |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> round |> Int])
     else
         return expr
     end
@@ -142,7 +142,7 @@ function compile_expr(expr::Expr, custom_operations::Dict, primitives_with_arity
 
     # Now compile the transformed expression into a Julia function
     # This function explicitly requires `vars` to be passed as an argument
-    return eval(:( (vars) -> $expr ))
+    return eval(:( (vars::Dict) -> $expr ))
 end
 
 compile_expr(expr::GeneticExpr, custom_operations::Dict, primitives_with_arity::Dict, gradient_functions::Dict, width, height) =
