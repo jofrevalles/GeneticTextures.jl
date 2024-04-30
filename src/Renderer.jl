@@ -1,5 +1,6 @@
 using Images, Colors
 using CoherentNoise: perlin_2d
+using Statistics
 
 clean!(img::Matrix{Color}) = clean!(RGB.(img)) # convert img to RGB and call clean! again
 
@@ -82,7 +83,7 @@ function generate_image_basic(func, width::Int, height::Int; clean = true)
             vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5) # Add more variables if needed, e.g., :t => time
             rgb = invokelatest(func, vars)
 
-            if rgb isa GeneticTextures.Color
+            if rgb isa Color
                 img[y, x] = RGB(rgb.r, rgb.g, rgb.b)
             elseif isa(rgb, Number)
                 img[y, x] = RGB(rgb, rgb, rgb)
@@ -93,6 +94,7 @@ function generate_image_basic(func, width::Int, height::Int; clean = true)
     end
 
     clean && clean!(img)
+    display(img)
     return img
 end
 
@@ -115,6 +117,7 @@ function generate_image_threaded(func, width::Int, height::Int; clean = true)
     end
 
     clean && clean!(img)
+    display(img)
     return img
 end
 
@@ -126,10 +129,11 @@ function generate_image_vectorized(func, width::Int, height::Int; clean = true)
     img = broadcast((x, y) -> invokelatest(func, Dict(:x => x, :y => y)), X, Y)
 
     is_color = [r isa Color for r in img]
-    img[is_color] = RGB.(img[is_color])
+    img[is_color] = RGB.(red.(img[is_color]), green.(img[is_color]), blue.(img[is_color]))
     img[!is_color] = RGB.(img[!is_color], img[!is_color], img[!is_color])
 
     clean && clean!(img)
+    display(img)
     return img
 end
 
@@ -158,6 +162,7 @@ function generate_image_vectorized_threaded(func, width::Int, height::Int; clean
     end
 
     clean && clean!(img)
+    display(img)
     return img
 end
 
