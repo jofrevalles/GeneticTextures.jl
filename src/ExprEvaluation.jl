@@ -145,5 +145,8 @@ function compile_expr(expr::Expr, custom_operations::Dict, primitives_with_arity
     return eval(:( (vars::Dict) -> $expr ))
 end
 
+f(expr::GeneticExpr, width, height) =
+    compile_expr(expr, custom_operations, primitives_with_arity, gradient_functions, width, height)
+
 compile_expr(expr::GeneticExpr, custom_operations::Dict, primitives_with_arity::Dict, gradient_functions::Dict, width, height) =
     compile_expr(expr.expr, custom_operations, primitives_with_arity, gradient_functions, width, height, Dict())
