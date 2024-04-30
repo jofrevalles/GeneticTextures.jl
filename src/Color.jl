@@ -1,6 +1,7 @@
+import Base: sin, cos, tan, +, -, *, /, ^, sqrt, exp, log, abs, atan, asin, acos, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round, max, min
 using Base
 using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, broadcasted
-import Base: sin, cos, tan, +, -, *, /, ^, sqrt, exp, log, abs, atan, asin, acos, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round, max, min
+using Colors
 
 # TODO: Consider changing the name of Color, since it can conflict with Images.jl and Colors.jl
 mutable struct Color{T<:Number} <: AbstractArray{T, 1}
@@ -94,8 +95,7 @@ function Base.show(io::IO, c::Color)
     print(io, "Color(", round(c.r, digits=2), ", ", round(c.g, digits=2), ", ", round(c.b, digits=2), ")")
 end
 
-using Colors
-Colors.RGB(c::GeneticTextures.Color) = RGB(c.r, c.g, c.b)
+Colors.RGB(c::Color) = RGB(c.r, c.g, c.b)
 
 Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
 
