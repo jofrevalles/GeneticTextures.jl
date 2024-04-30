@@ -99,7 +99,7 @@ Colors.RGB(c::Color) = RGB(c.r, c.g, c.b)
 
 Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
 
-unary_functions = [sin, cos, tan, sqrt, exp, log, abs, asin, acos, atan, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round]
+unary_functions = [sin, cos, tan, sqrt, exp, log, asin, acos, atan, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round]
 binary_functions = [+, -, *, /, ^, atan, mod, rem, fld, cld, ceil, floor, round, max, min]
 
 # Automatically define methods
