@@ -119,3 +119,11 @@ for func in binary_functions
         ($func)(x::Number, c::Color) = Base.broadcast($func, x, c)
     end
 end
+
+Base.isless(x::Number, y::Color) = isless(x, sum([y.r, y.g, y.b])/3.)
+Base.isless(x::Color, y::Number) = isless(sum([x.r, x.g, x.b])/3., y)
+Base.isless(x::Color, y::Color) = isless(sum([x.r, x.g, x.b])/3., sum([y.r, y.g, y.b])/3.)
+
+Base.isequal(x::Color, y::Color) = isequal(x.r, y.r) && isequal(x.g, y.g) && isequal(x.b, y.b)
+Base.isequal(x::Color, y::Number) = isequal(x.r, y) && isequal(x.g, y) && isequal(x.b, y)
+Base.isequal(x::Number, y::Color) = isequal(x, y.r) && isequal(x, y.g) && isequal(x, y.b)

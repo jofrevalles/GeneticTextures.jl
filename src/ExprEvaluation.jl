@@ -150,3 +150,7 @@ f(expr::GeneticExpr, width, height) =
 
 compile_expr(expr::GeneticExpr, custom_operations::Dict, primitives_with_arity::Dict, gradient_functions::Dict, width, height) =
     compile_expr(expr.expr, custom_operations, primitives_with_arity, gradient_functions, width, height, Dict())
+
+Base.isless(x::Complex, y::Number) = x.re < y
+Base.isless(x::Number, y::Complex) = x < y.re
+Base.isless(x::Complex, y::Complex) = x.re < y.re || (x.re == y.re && x.im < y.im)
