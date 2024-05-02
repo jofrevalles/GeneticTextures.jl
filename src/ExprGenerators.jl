@@ -40,16 +40,17 @@ const primitives_with_arity = Dict(
     :ifs => 3,
     :max => 2,
     :min => 2,
-    :A => 0,
-    :B => 0,
-    :C => 0,
+    :real => 1,
+    :imag => 1,
+    :A => -1,
+    :B => -1,
+    :C => -1,
+    :D => -1,
     :t => 0
 )
 
 # special_funcs take not only numbers as arguments
 const special_funcs = (
-    :grad_mag,
-    :grad_dir,
     :blur,
     :perlin_2d,
     :perlin_color
@@ -71,7 +72,7 @@ const color_funcs = (
 )
 
 function random_expr(primitives_with_arity, max_depth; kwargs...)
-    return CustomExpr(random_function(primitives_with_arity, max_depth; kwargs...))
+    return GeneticExpr(random_function(primitives_with_arity, max_depth; kwargs...))
 end
 
 function random_function(primitives_with_arity, max_depth; boolean_functions_depth_threshold = 1)
@@ -124,18 +125,6 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
             return rand()
         elseif f == :rand_color
             return Color(rand(3))
-        elseif f == :grad_dir  # ??remove the Color maker functions from primitives_with_arity
-            op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
-            n_args = primitives_with_arity[op]
-            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
-
-            return Expr(:call, f, args...)
-        elseif f == :grad_mag
-            op = rand((x -> x[1]).(filter(x -> x.second != 0 && x.first ∉ special_funcs ∪ boolean_funcs, collect(primitives_with_arity)))) # TODO: Maybe enable boolean functions here?
-            n_args = primitives_with_arity[op]
-            args = [op, [random_function(primitives_with_arity, max_depth - 1) for _ in 1:n_args]...]
-
-            return Expr(:call, f, args...)
         elseif f == :blur
             op = rand((x -> x[1]).(filter(x -> x.second ∈ [2] && x.first ∉ [:or, :and, :xor, :perlin_2d, :perlin_color, :grad_dir, :grad_mag], collect(primitives_with_arity)))) #maybe disable boolean functions here?
             n_args = primitives_with_arity[op]

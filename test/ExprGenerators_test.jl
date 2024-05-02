@@ -1,15 +1,15 @@
 @testset "ExprGenerators" begin
-    using GeneticTextures: CustomExpr, random_expr, random_function, grad_dir, primitives_with_arity, depth_of_expr
+    using GeneticTextures: GeneticExpr, random_expr, random_function, grad_dir, primitives_with_arity, depth_of_expr
     max_depth = 5
 
     @testset "random_expr" begin
         for _ in 1:20
-            c_expr = random_expr(primitives_with_arity, max_depth)
+            geneticexpr = random_expr(primitives_with_arity, max_depth)
 
-            if c_expr isa CustomExpr
-                @test c_expr.expr isa Union{Expr, Number, Color, Symbol}
+            if geneticexpr isa GeneticExpr
+                @test geneticexpr.expr isa Union{Expr, Number, Color, Symbol}
             else
-                @test c_expr isa Union{Number, Color, Symbol}
+                @test geneticexpr isa Union{Number, Color, Symbol}
             end
         end
     end

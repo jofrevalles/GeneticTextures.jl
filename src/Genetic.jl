@@ -145,16 +145,16 @@ function recursive_mutation!(expr, mutation_probs, primitives_dict, parent, idx,
     return expr
 end
 
-function mutate!(ce::CustomExpr, mutation_probs, primitives_dict=primitives_with_arity, max_mutations::Int=5)
-    mutated_expr = recursive_mutation!(ce.expr, mutation_probs, deepcopy(primitives_dict), nothing, 0, max_mutations)
-    return CustomExpr(mutated_expr)
+function mutate!(geneticexpr::GeneticExpr, mutation_probs, primitives_dict=primitives_with_arity, max_mutations::Int=5)
+    mutated_expr = recursive_mutation!(geneticexpr.expr, mutation_probs, deepcopy(primitives_dict), nothing, 0, max_mutations)
+    return GeneticExpr(mutated_expr)
 end
 
 function mutate(e, mutation_probs, primitives_dict=primitives_with_arity, max_mutations::Int=5)
-    if e isa CustomExpr
+    if e isa GeneticExpr
         mutated_expr = recursive_mutation!(deepcopy(e.expr), mutation_probs, deepcopy(primitives_dict), nothing, 0, max_mutations)
     else
         mutated_expr = recursive_mutation!(deepcopy(e), mutation_probs, deepcopy(primitives_dict), nothing, 0, max_mutations)
     end
-    return CustomExpr(mutated_expr)
+    return GeneticExpr(mutated_expr)
 end
