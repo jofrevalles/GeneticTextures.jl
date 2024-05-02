@@ -84,13 +84,16 @@ function x_grad(func, vars, width, height; Δx = 1)
     idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
 
     # Evaluate function at x
-    center_val = func(merge(vars, Dict(:x => x_val)))
+    vars[:x] = x_val
+    center_val = func(vars)
 
     if idx_x == width
-        x_minus_val = func(merge(vars, Dict(:x => x_val - Δx_scaled))) # Evaluate function at x - Δx
+        vars[:x] = x_val - Δx_scaled
+        x_minus_val = func(vars) # Evaluate function at x - Δx
         return (center_val - x_minus_val) / Δx_scaled
     else
-        x_plus_val = func(merge(vars, Dict(:x => x_val + Δx_scaled))) # Evaluate function at x + Δx
+        vars[:x] = x_val + Δx_scaled
+        x_plus_val = func(vars) # Evaluate function at x + Δx
         return (x_plus_val - center_val) / Δx_scaled
     end
 end
@@ -102,14 +105,17 @@ function y_grad(func, vars, width, height; Δy = 1)
     idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
     # Evaluate function at y
-    center_val = func(merge(vars, Dict(:y => y_val)))
+    vars[:y] = y_val
+    center_val = func(vars)
 
     # Compute the finite difference
     if idx_y == height
-        y_minus = func(merge(vars, Dict(:y => y_val - Δy_scaled))) # Evaluate function at y - Δy
+        vars[:y] = y_val - Δy_scaled
+        y_minus = func(vars) # Evaluate function at y - Δy
         return (center_val - y_minus) / Δy_scaled
     else
-        y_plus_val = func(merge(vars, Dict(:y => y_val + Δy_scaled))) # Evaluate function at y + Δy
+        vars[:y] = y_val + Δy_scaled
+        y_plus_val = func(vars) # Evaluate function at y + Δy
         return (y_plus_val - center_val) / Δy_scaled
     end
 end
@@ -136,20 +142,25 @@ function laplacian(func, vars, width, height; Δx = 1, Δy = 1)
     idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
     idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
-    center_val = func(merge(vars, Dict(:x => x_val, :y => y_val)))
+    center_val = func(vars)
 
     if Δx == 0
         ∇x = 0
     else
+        vars[:y] = y_val
         if idx_x > 1 && idx_x < width
-            x_plus_val = func(merge(vars, Dict(:x => x_val + Δx_scaled, :y => y_val)))
-            x_minus_val = func(merge(vars, Dict(:x => x_val - Δx_scaled, :y => y_val)))
+            vars[:x] = x_val + Δx_scaled
+            x_plus_val = func(vars)
+            vars[:x] = x_val - Δx_scaled
+            x_minus_val = func(vars)
             ∇x = (x_plus_val + x_minus_val - 2 * center_val) / Δx_scaled^2
         elseif idx_x == 1
-            x_plus = func(merge(vars, Dict(:x => x_val + Δx_scaled, :y => y_val)))
+            vars[:x] = x_val + Δx_scaled
+            x_plus = func(vars)
             ∇x = (x_plus - center_val) / Δx_scaled^2
         else # idx_x == width
-            x_minus = func(merge(vars, Dict(:x => x_val - Δx_scaled, :y => y_val)))
+            vars[:x] = x_val - Δx_scaled
+            x_minus = func(vars)
             ∇x = (center_val - x_minus) / Δx_scaled^2
         end
     end
@@ -157,15 +168,20 @@ function laplacian(func, vars, width, height; Δx = 1, Δy = 1)
     if Δy == 0
         ∇y = 0
     else
+        vars[:x] = x_val
         if idx_y > 1 && idx_y < height
-            y_plus_val = func(merge(vars, Dict(:x => x_val, :y => y_val + Δy_scaled)))
-            y_minus_val = func(merge(vars, Dict(:x => x_val, :y => y_val - Δy_scaled)))
+            vars[:y] = y_val + Δy_scaled
+            y_plus_val = func(vars)
+            vars[:y] = y_val - Δy_scaled
+            y_minus_val = func(vars)
             ∇y = (y_plus_val + y_minus_val - 2 * center_val) / Δy_scaled^2
         elseif idx_y == 1
-            y_plus = func(merge(vars, Dict(:x => x_val, :y => y_val + Δy_scaled)))
+            vars[:y] = y_val + Δy_scaled
+            y_plus = func(vars)
             ∇y = (y_plus - center_val) / Δy_scaled^2
         else # idx_y == height
-            y_minus = func(merge(vars, Dict(:x => x_val, :y => y_val - Δy_scaled)))
+            vars[:y] = y_val - Δy_scaled
+            y_minus = func(vars)
             ∇y = (center_val - y_minus) / Δy_scaled^2
         end
     end
@@ -175,6 +191,49 @@ end
 
 # Return the smalles value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
 function neighbor_min(func, vars, width, height; Δx = 1, Δy = 1)
+    # Extract x and y values directly
+    x_val = vars[:x]
+    y_val = vars[:y]
+
+    # Pre-calculate positions for x and y in the array/matrix
+    idx_x = round(Int, (x_val + 0.5) * (width - 1) + 1)
+    idx_y = round(Int, (y_val + 0.5) * (height - 1) + 1)
+
+    # Initialize min_val
+    min_val = func(vars)
+
+    # Define the ranges, ensuring they stay within bounds
+    min_x = max(1, idx_x - Δx)
+    max_x = min(width, idx_x + Δx)
+    min_y = max(1, idx_y - Δy)
+    max_y = min(height, idx_y + Δy)
+
+    # Calculate adjusted ranges to avoid division by zero in the loop
+    range_x = (min_x:max_x) .- idx_x
+    range_y = (min_y:max_y) .- idx_y
+
+    # Loop through the neighborhood
+    @inbounds for dx in range_x, dy in range_y
+        if dx == 0 && dy == 0
+            continue
+        end
+
+        # Adjust the temp_vars for each iteration
+        vars[:x] = x_val + dx / (width - 1)
+        vars[:y] = y_val + dy / (height - 1)
+
+        # Evaluate the function and update min_val
+        val = func(vars)
+        if val < min_val
+            min_val = val
+        end
+    end
+
+    return min_val
+end
+
+# Return the minimum value from a neighborhood of radius Δr around the point (x, y)
+function neighbor_min_radius(func, vars, width, height; Δr = 1)
     # Initialize the center values
     x_val = vars[:x]
     y_val = vars[:y]
@@ -184,72 +243,65 @@ function neighbor_min(func, vars, width, height; Δx = 1, Δy = 1)
     # Temporary variables to avoid repeated dictionary updates
     temp_vars = copy(vars)
 
-    # if there are any Matrix in vars values, then filter the iterations
-    range_x = -Δx:Δx
-    range_y = -Δy:Δy
+    # Calculate pixel indices for the center point
+    idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
+    idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
 
+    # Evaluate within a circular neighborhood
+    for dx in -Δr:Δr, dy in -Δr:Δr
+        if dx^2 + dy^2 <= Δr^2  # Check if the point (dx, dy) is within the circular radius
+            new_x = idx_x + dx
+            new_y = idx_y + dy
 
-    if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
+            if 1 <= new_x <= width && 1 <= new_y <= height  # Check if the indices are within image boundaries
+                temp_vars[:x] = (new_x - 1) / (width - 1) - 0.5
+                temp_vars[:y] = (new_y - 1) / (height - 1) - 0.5
 
-        # Filter the iterations that are not in the matrix
-        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
-        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
-    end
-
-    # Evaluate neighborhood
-    for dx in range_x, dy in range_y
-        if dx == 0 && dy == 0
-            continue
-        end
-
-        temp_vars[:x] = x_val + dx / (width - 1)
-        temp_vars[:y] = y_val + dy / (height - 1)
-
-        val = func(temp_vars)
-        if val < min_val
-            min_val = val
+                val = func(temp_vars)
+                if val < min_val
+                    min_val = val
+                end
+            end
         end
     end
 
     return min_val
 end
 
-# Return the largest value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
 function neighbor_max(func, vars, width, height; Δx = 1, Δy = 1)
-    # Initialize the center values
+    # Extract x and y values directly
     x_val = vars[:x]
     y_val = vars[:y]
 
+    # Pre-calculate positions for x and y in the array/matrix
+    idx_x = round(Int, (x_val + 0.5) * (width - 1) + 1)
+    idx_y = round(Int, (y_val + 0.5) * (height - 1) + 1)
+
+    # Initialize max_val
     max_val = func(vars)
 
-    # Temporary variables to avoid repeated dictionary updates
-    temp_vars = copy(vars)
+    # Define the ranges, ensuring they stay within bounds
+    min_x = max(1, idx_x - Δx)
+    max_x = min(width, idx_x + Δx)
+    min_y = max(1, idx_y - Δy)
+    max_y = min(height, idx_y + Δy)
 
-    # if there are any Matrix in vars values, then filter the iterations
-    range_x = -Δx:Δx
-    range_y = -Δy:Δy
+    # Calculate adjusted ranges to avoid division by zero in the loop
+    range_x = (min_x:max_x) .- idx_x
+    range_y = (min_y:max_y) .- idx_y
 
-    if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
-
-        # Filter the iterations that are not in the matrix
-        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
-        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
-    end
-
-    # Evaluate neighborhood
-    for dx in range_x, dy in range_y
+    # Loop through the neighborhood
+    @inbounds for dx in range_x, dy in range_y
         if dx == 0 && dy == 0
             continue
         end
 
-        temp_vars[:x] = x_val + dx / (width - 1)
-        temp_vars[:y] = y_val + dy / (height - 1)
+        # Adjust the temp_vars for each iteration
+        vars[:x] = x_val + dx / (width - 1)
+        vars[:y] = y_val + dy / (height - 1)
 
-        val = func(temp_vars)
+        # Evaluate the function and update max_val
+        val = func(vars)
         if val > max_val
             max_val = val
         end
@@ -260,39 +312,40 @@ end
 
 # Return the average value from a neighborhood of size (2Δx + 1) x (2Δy + 1) around the point (x, y)
 function neighbor_ave(func, vars, width, height; Δx = 1, Δy = 1)
-    # Initialize the center values
+    # Extract x and y values directly
     x_val = vars[:x]
     y_val = vars[:y]
 
+    # Pre-calculate positions for x and y in the array/matrix
+    idx_x = round(Int, (x_val + 0.5) * (width - 1) + 1)
+    idx_y = round(Int, (y_val + 0.5) * (height - 1) + 1)
+
+    # Initialize sum and count
     sum_val = func(vars)
     count = 1
 
-    # Temporary variables to avoid repeated dictionary updates
-    temp_vars = copy(vars)
+    # Define the ranges, ensuring they stay within bounds
+    min_x = max(1, idx_x - Δx)
+    max_x = min(width, idx_x + Δx)
+    min_y = max(1, idx_y - Δy)
+    max_y = min(height, idx_y + Δy)
 
-    # if there are any Matrix in vars values, then filter the iterations
-    range_x = -Δx:Δx
-    range_y = -Δy:Δy
+    # Calculate adjusted ranges to avoid division by zero in the loop
+    range_x = (min_x:max_x) .- idx_x
+    range_y = (min_y:max_y) .- idx_y
 
-    if any([isa(v, Matrix) for v in values(vars)])
-        idx_x = (x_val + 0.5) * (width - 1) + 1 |> round |> Int
-        idx_y = (y_val + 0.5) * (height - 1) + 1 |> round |> Int
-
-        # Filter the iterations that are not in the matrix
-        range_x = filter(x -> 1 <= idx_x + x <= width, range_x)
-        range_y = filter(y -> 1 <= idx_y + y <= height, range_y)
-    end
-
-    # Evaluate neighborhood
-    for dx in range_x, dy in range_y
+    # Loop through the neighborhood
+    @inbounds for dx in range_x, dy in range_y
         if dx == 0 && dy == 0
             continue
         end
 
-        temp_vars[:x] = x_val + dx / (width - 1)
-        temp_vars[:y] = y_val + dy / (height - 1)
+        # Adjust the temp_vars for each iteration
+        vars[:x] = x_val + dx / (width - 1)
+        vars[:y] = y_val + dy / (height - 1)
 
-        sum_val += func(temp_vars)
+        # Add the function evaluation to sum_val
+        sum_val += func(vars)
         count += 1
     end
 
@@ -307,6 +360,7 @@ gradient_functions = Dict(
     :y_grad => y_grad,
     :laplacian => laplacian,
     :neighbor_min => neighbor_min,
+    :neighbor_min_radius => neighbor_min_radius,
     :neighbor_max => neighbor_max,
     :neighbor_ave => neighbor_ave
 )
