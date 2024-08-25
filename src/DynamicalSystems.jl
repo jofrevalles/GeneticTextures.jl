@@ -5,11 +5,16 @@ using ProgressMeter
 
 struct VariableDynamics
     name::Symbol
-    F_0::Union{GeneticExpr, Symbol, Number, Color}
+    F_0::Union{GeneticExpr, Symbol, Number, Matrix{RGB{N0f8}}, Color}
     δF::Union{GeneticExpr, Symbol, Number, Color}
+    image::Union{Matrix{RGB{N0f8}}, Nothing}
 
     function VariableDynamics(name, F_0, δF)
-        return new(name, GeneticExpr(F_0), GeneticExpr(δF))
+        if F_0 isa Matrix{RGB{N0f8}}
+            return new(name, GeneticExpr(:(0.0+0.0)), GeneticExpr(δF), F_0)
+        else
+            return new(name, GeneticExpr(F_0), GeneticExpr(δF), nothing)
+        end
     end
 end
 
@@ -24,13 +29,13 @@ end
 Base.length(ds::DynamicalSystem) = length(ds.dynamics)
 Base.iterate(ds::DynamicalSystem, state = 1) = state > length(ds.dynamics) ? nothing : (ds.dynamics[state], state + 1)
 
-function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, w, h, t, dt, complex_func::Function; renderer = :threaded, kwargs...)
+function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, possible_types, w, h, t, dt, complex_func::Function; renderer = :threaded, kwargs...)
     # TODO: Find a better way to pass these arguments to the function
     global width = w
     global height = h
 
     if renderer == :basic
-        return evolve_system_basic!(vals, dynamics, genetic_funcs, width, height, t, dt, complex_func)
+        return evolve_system_basic!(vals, dynamics, genetic_funcs, possible_types, width, height, t, dt, complex_func)
     elseif renderer == :threaded
         return evolve_system_threaded!(vals, dynamics, genetic_funcs, width, height, t, dt, complex_func)
     elseif renderer == :vectorized
@@ -42,14 +47,131 @@ function evolve_system!(vals, dynamics::DynamicalSystem, genetic_funcs, w, h, t,
     end
 end
 
+contains_color_code(ge::GeneticExpr) = contains_color_code(ge.expr)
+
+# Check method's source code for color-specific logic (this is just a placeholder)
+contains_color_code(e::Expr) = occursin("Color(", string(e))
+
+contains_complex_code(ge::GeneticExpr) = contains_complex_code(ge.expr)
+
+# Check if the expression involves Complex number logic
+# TODO: This will have problems for functions that f(Real) -> Complex ... RETHINK this problem
+#   maybe in this case we can force the functions to behave like f(Real) -> complex_func(Complex)
+contains_complex_code(e::Expr) = occursin("Complex(", string(e))
+
+
+using ExprTools
+
+# TODO: Fix this if F0 isa Matrix{RGB{N0f8}}
+function determine_type(variable::VariableDynamics, dynamics::DynamicalSystem, checked=Set{Symbol}())
+    # Initialize flags for detected types
+    is_color = false
+    is_complex = false
+
+    # Recursive helper function to analyze expressions
+    function recurse_expr(expr)
+        if expr isa Symbol
+            # Prevent infinite recursion for cycles in dynamics
+            if expr in checked
+                return (false, false)
+            end
+            push!(checked, expr)
+
+            # Find and analyze the dynamic expressions associated with the symbol
+            for dyn in dynamics
+                if dyn.name == expr
+                    color_f0, complex_f0 = recurse_expr(F_0(dyn).expr)
+                    color_δf, complex_δf = recurse_expr(δF(dyn).expr)
+                    return (color_f0 || color_δf, complex_f0 || complex_δf)
+                end
+            end
+
+            return (false, false)  # Default if the symbol doesn't match any dynamic
+        elseif expr isa Expr
+            # Handle potential type-defining function calls or constructors
+            if occursin("Color(", string(expr)) || occursin("rand_color(", string(expr)) || occursin("RGB(", string(expr))
+                is_color = true
+            end
+            if occursin("Complex(", string(expr)) || occursin("imag(", string(expr))
+                is_complex = true
+            end
+
+            # Analyze each component of the expression recursively
+            for arg in expr.args
+                color, complex = recurse_expr(arg)
+                is_color |= color
+                is_complex |= complex
+            end
+        end
+
+        return (is_color, is_complex)
+    end
+
+    # Check both F_0 and δF expressions of the given variable
+    if variable.image !== nothing
+        is_color_F0, is_complex_F0 = (true, false)
+    else
+        is_color_F0, is_complex_F0 = recurse_expr(F_0(variable).expr)
+    end
+    is_color_δF, is_complex_δF = recurse_expr(δF(variable).expr)
+
+    # Combine results from both initial and dynamic function checks
+    return (is_color_F0 || is_color_δF, is_complex_F0 || is_complex_δF)
+end
+
 function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normalize_img = false, adjust_brighness = true, plot = true, renderer = :threaded, color_expr::Expr = :((vals...) -> RGB(sum(red.(vals))/length(vals), sum(green.(vals))/length(vals), sum(blue.(vals))/length(vals))), complex_expr::Expr = :((c) -> real(c)))
     color_func = eval(color_expr)
     complex_func = eval(complex_expr)
 
     init_funcs = [compile_expr(F_0(ds), custom_operations, primitives_with_arity, gradient_functions, width, height) for ds in dynamics]
 
-    vals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)] # Initialize each vars' grid using their F_0 expression
-    t = 0
+    # IMPORTANT TODO: Initialize `vals` as Matrix{Float64} instead, and only convert to Color at the end
+    # we could also inspect the expr of F_0 and δF to determine if the result is a color or not
+    #   vals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)] # Initialize each vars' grid using their F_0 expression
+
+    # vals = []
+    # for i in 1:length(dynamics)
+    #     if contains_color_code(F_0(dynamics.dynamics[i]))  # Assuming dynamics[i].F_0 is the function or its expression
+    #         push!(vals, Matrix{Color}(undef, height, width))
+    #     elseif contains_complex_code(F_0(dynamics.dynamics[i]))
+    #         push!(vals, Matrix{Complex{Float64}}(undef, height, width))
+    #     else
+    #         push!(vals, Matrix{Float64}(undef, height, width))
+    #     end
+    # end
+
+    # Initialize vals as a vector of matrices with the appropriate type
+    return_types = [determine_type(ds, dynamics) for ds in dynamics]
+    vals = []
+    possible_types = []
+    for (is_color, is_complex) in return_types
+        if is_color
+            push!(vals, Matrix{Color}(undef, height, width))
+
+            if Matrix{Color} ∉ possible_types
+                push!(possible_types, Matrix{Color})
+            end
+        elseif is_complex
+            push!(vals, Matrix{Complex{Float64}}(undef, height, width))
+
+            if Matrix{Complex{Float64}} ∉ possible_types
+                push!(possible_types, Matrix{Complex{Float64}})
+            end
+        else
+            push!(vals, Matrix{Float64}(undef, height, width))
+
+            if Matrix{Float64} ∉ possible_types
+                push!(possible_types, Matrix{Float64})
+            end
+        end
+    end
+    t = 0.
+
+    # TODO: The type of vars Dict should also be determined by the expressions
+    # vars = Dict{Symbol, Union{Float64, Matrix{Float64}}}()
+    # The Matrix{Union{Float64, Color, ComplexF64}} is needed for the cache_computed_values function... This is sad, RETHINK. But maybe this is not a big overhead
+    vars = Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}()
+    images = [ds.image === nothing ? ds.image : imresize(ds.image, (height, width)) for ds in dynamics]
 
     for x_pixel in 1:width
         for y_pixel in 1:height
@@ -57,14 +179,22 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normali
             y = (y_pixel - 1) / (height - 1) - 0.5
 
             for i in 1:length(dynamics)
-                vars = Dict(:x => x, :y => y, :t => t)
-                val = invokelatest(init_funcs[i], vars)
-
-                if val isa Color
-                    vals[i][y_pixel, x_pixel] = val
+                if (images[i] !== nothing)
+                    vals[i][y_pixel, x_pixel] = Color(images[i][y_pixel, x_pixel])
                 else
-                    vals[i][y_pixel, x_pixel] = isreal(val) ? Color(val, val, val) : Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
+                    vars[:x] = x
+                    vars[:y] = y
+                    vars[:t] = t
+                    val = invokelatest(init_funcs[i], vars)
+
+                    vals[i][y_pixel, x_pixel] = val
                 end
+
+                # if val isa Color
+                #     vals[i][y_pixel, x_pixel] = val
+                # else
+                #     vals[i][y_pixel, x_pixel] = isreal(val) ? Color(val, val, val) : Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
+                # end
             end
         end
     end
@@ -110,16 +240,41 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normali
     total_frames = ceil(Int, T / dt)
     progress = Progress(total_frames, desc="Initializing everything...", barlen=80)
 
+    # Save the initial state
+    img = Array{RGB{Float64}, 2}(undef, height, width)
+    for x_pixel in 1:width
+        for y_pixel in 1:height
+            values = [var[y_pixel, x_pixel] for var in vals]
+
+            # convert values to color
+            values = Color.(values)
+
+            img[y_pixel, x_pixel] =
+                invokelatest(color_func, [isreal(val) ? val : invokelatest(complex_func, val) for val in values]...)
+        end
+    end
+    normalize_img && clean!(img) # Clean the image if requested
+    adjust_brighness && adjust_brightness!(img) # Adjust the brightness if requested
+
+    plot && display(img)
+
+    frame_file = animation_dir * "/frame_$(lpad(0, 5, '0')).png"
+    save(frame_file, map(clamp01nan, img))
+    push!(image_files, frame_file) # Append the image file to the list
+
     # Evolve the system over time
     start_time = time()
     for (i, t) in enumerate(range(0, T, step=dt))
-        vals = evolve_system!(vals, dynamics, genetic_funcs, width, height, t, dt, complex_func; renderer = renderer) # Evolve the system
+        vals = evolve_system!(vals, dynamics, genetic_funcs, possible_types, width, height, t, dt, complex_func; renderer = renderer) # Evolve the system
 
         # Create an image from current state
         img = Array{RGB{Float64}, 2}(undef, height, width)
         for x_pixel in 1:width
             for y_pixel in 1:height
                 values = [var[y_pixel, x_pixel] for var in vals]
+
+                # convert values to color
+                values = Color.(values)
 
                 img[y_pixel, x_pixel] =
                  invokelatest(color_func, [isreal(val) ? val : invokelatest(complex_func, val) for val in values]...)
@@ -152,9 +307,25 @@ function animate_system(dynamics::DynamicalSystem, width, height, T, dt; normali
     println("Expressions saved to: $expr_file")
 end
 
-function evolve_system_basic!(vals, dynamics::DynamicalSystem, genetic_funcs, width, height, t, dt, complex_func::Function)
-    δvals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
-    vars = merge(Dict(:t => t), Dict(name(ds) => vals[i] for (i, ds) in enumerate(dynamics)))
+function evolve_system_basic!(vals, dynamics::DynamicalSystem, genetic_funcs, possible_types, width, height, t, dt, complex_func::Function)
+    # δvals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
+    # PROBLEM HERE! This will error for coupled variables that one have Color or Complex and the others
+    #   don't. We should rethink this or add a smarter way to check if there will be Color or Complex
+    # δvals = []
+    # for i in 1:length(dynamics)
+    #     if contains_color_code(δF(dynamics.dynamics[i]))  # Assuming dynamics[i].F_0 is the function or its expression
+    #         push!(δvals, Matrix{Color}(undef, height, width))
+    #     elseif contains_complex_code(δF(dynamics.dynamics[i]))
+    #         push!(δvals, Matrix{Complex{Float64}}(undef, height, width))
+    #     else
+    #         push!(δvals, Matrix{Float64}(undef, height, width))
+    #     end
+    # end
+    # δvals = [Matrix{Float64}(undef, height, width) for _ in 1:length(dynamics)]
+
+    vars = Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}(name(ds) => vals[i] for (i, ds) in enumerate(dynamics))
+    vars[:t] = t
+    # vars[:possible_types] = possible_types
 
     for x_pixel in 1:width
         for y_pixel in 1:height
@@ -162,23 +333,29 @@ function evolve_system_basic!(vals, dynamics::DynamicalSystem, genetic_funcs, wi
             y = (y_pixel - 1) / (height - 1) - 0.5
 
             for i in 1:length(dynamics)
-                val =  dt .* invokelatest(genetic_funcs[i], merge(vars, Dict(:x => x, :y => y)))
+                vars[:x] = x
+                vars[:y] = y
+                val =  dt .* invokelatest(genetic_funcs[i], vars)
 
-                if val isa Color
-                    δvals[i][y_pixel, x_pixel] = val
-                elseif isreal(val)
-                    δvals[i][y_pixel, x_pixel] = Color(val, val, val)
-                else
-                    δvals[i][y_pixel, x_pixel] = Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
-                end
+                vals[i][y_pixel, x_pixel] += val
+
+                # δvals[i][y_pixel, x_pixel] = val
+
+                # if val isa Color
+                #     δvals[i][y_pixel, x_pixel] = val
+                # elseif isreal(val)
+                #     δvals[i][y_pixel, x_pixel] = Color(val, val, val)
+                # else
+                #     δvals[i][y_pixel, x_pixel] = Color(invokelatest(complex_func, val), invokelatest(complex_func, val), invokelatest(complex_func, val))
+                # end
             end
         end
     end
 
-    # Update vals
-    for i in 1:length(dynamics)
-        vals[i] += δvals[i]
-    end
+    # # Update vals
+    # for i in 1:length(dynamics)
+    #     vals[i] += δvals[i]
+    # end
 
     return vals
 end
@@ -186,7 +363,8 @@ end
 # TODO: Check if using threads may lead to unexpected results when there are random number generators involved
 function evolve_system_threaded!(vals, dynamics, genetic_funcs, width, height, t, dt, complex_func)
     δvals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
-    vars = merge(Dict(:t => t), Dict(name(ds) => vals[i] for (i, ds) in enumerate(dynamics)))
+    vars = Dict{Symbol, Union{Float64, Matrix{Float64}}}(name(ds) => vals[i] for (i, ds) in enumerate(dynamics))
+    vars[:t] = t
 
     Threads.@threads for x_pixel in 1:width
         for y_pixel in 1:height
@@ -243,7 +421,8 @@ function evolve_system_vectorized!(vals, dynamics::DynamicalSystem, genetic_func
     # Prepare δvals to accumulate changes
     δvals = [Matrix{Color}(undef, height, width) for _ in 1:length(dynamics)]
 
-    vars = merge(Dict(:t => t), Dict(name(ds) => vals[i] for (i, ds) in enumerate(dynamics)))
+    vars = Dict{Symbol, Union{Float64, Matrix{Float64}}}(name(ds) => vals[i] for (i, ds) in enumerate(dynamics))
+    vars[:t] = t
 
     # Loop through each dynamical system
     for i in 1:length(dynamics)
@@ -270,7 +449,8 @@ function evolve_system_vectorized_threaded!(vals, dynamics::DynamicalSystem, gen
     y_grid = ((1:height) .- 1) ./ (height - 1) .- 0.5
     X, Y = meshgrid(x_grid, y_grid)
 
-    vars = merge(Dict(:t => t), Dict(name(ds) => vals[i] for (i, ds) in enumerate(dynamics)))
+    vars = Dict{Symbol, Union{Float64, Matrix{Float64}}}(name(ds) => vals[i] for (i, ds) in enumerate(dynamics))
+    vars[:t] = t
 
     # Multithreading across either columns or blocks of columns
     Threads.@threads for block in 1:n_blocks
