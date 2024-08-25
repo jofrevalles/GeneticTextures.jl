@@ -46,7 +46,7 @@ const primitives_with_arity = Dict(
     :B => -1,
     :C => -1,
     :D => -1,
-    :t => 0
+    :t => -1
 )
 
 # special_funcs take not only numbers as arguments
@@ -62,6 +62,15 @@ const boolean_funcs = (
     :and,
     :xor,
     :ifs,
+)
+
+# variables
+const variables = (
+    :A,
+    :B,
+    :C,
+    :D,
+    :t
 )
 
 # color_funcs are functions that can return a color
@@ -94,11 +103,10 @@ function random_function(primitives_with_arity, max_depth; boolean_functions_dep
         end
     else
         if max_depth > boolean_functions_depth_threshold # only allow boolean functions deep in the function graph
-            available_funcs = [k for k in keys(primitives_with_arity) if k ∉ boolean_funcs]
+            available_funcs = [k for k in keys(primitives_with_arity) if k ∉ boolean_funcs && k ∉ variables]
         else
-            available_funcs = keys(primitives_with_arity)
+            available_funcs = filter(x -> x ∉ variables, keys(primitives_with_arity))
         end
-
         # Select a random primitive function
         f = rand(available_funcs)
         n_args = primitives_with_arity[f]

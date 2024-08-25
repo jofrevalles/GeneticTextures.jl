@@ -54,7 +54,7 @@ function convert_expr(expr, custom_operations, primitives_with_arity, gradient_f
         if get(primitives_with_arity, expr, 1) == 0
             return :(vars[$(QuoteNode(expr))])
         elseif get(primitives_with_arity, expr, 1) == -1
-            return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> round |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> round |> Int])
+            return :(vars[$(QuoteNode(expr))][(vars[:y] + 0.5) * (height-1) + 1 |> round |> Int, (vars[:x] + 0.5) * (width-1) + 1 |> round |> Int])
         else
             return expr
         end
@@ -127,7 +127,7 @@ function compile_expr(expr::Symbol, custom_operations::Dict, primitives_with_ari
     if get(primitives_with_arity, expr, 1) == 0
         return :(vars[$(QuoteNode(expr))])
     elseif get(primitives_with_arity, expr, 1) == -1
-        return :(vars[$(QuoteNode(expr))][(vars[:x] + 0.5) * (width-1) + 1 |> round |> Int, (vars[:y] + 0.5) * (height-1) + 1 |> round |> Int])
+        return :(vars[$(QuoteNode(expr))][(vars[:y] + 0.5) * (height-1) + 1 |> round |> Int, (vars[:x] + 0.5) * (width-1) + 1 |> round |> Int])
     else
         return expr
     end
@@ -154,3 +154,10 @@ compile_expr(expr::GeneticExpr, custom_operations::Dict, primitives_with_arity::
 Base.isless(x::Complex, y::Number) = x.re < y
 Base.isless(x::Number, y::Complex) = x < y.re
 Base.isless(x::Complex, y::Complex) = x.re < y.re || (x.re == y.re && x.im < y.im)
+
+Color(x::Complex, y::Complex, z::Float64) = Color(x, y, Complex(z))
+Color(x::Complex, y::Float64, z::Float64) = Color(x, Complex(y), Complex(z))
+Color(x::Float64, y::Complex, z::Float64) = Color(Complex(x), y, Complex(z))
+Color(x::Float64, y::Float64, z::Complex) = Color(Complex(x), Complex(y), z)
+Color(x::Complex, y::Float64, z::Complex) = Color(x, Complex(y), z)
+Color(x::Float64, y::Complex, z::Complex) = Color(Complex(x), y, z)
