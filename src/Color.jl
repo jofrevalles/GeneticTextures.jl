@@ -15,6 +15,8 @@ function Color(v::AbstractVector{T}) where {T<:Number}
     return Color(v[1], v[2], v[3])
 end
 
+Color(n::Number) = Color(n, n, n)
+
 red(c::Color) = c.r
 green(c::Color) = c.g
 blue(c::Color) = c.b
@@ -98,6 +100,8 @@ end
 Colors.RGB(c::Color) = RGB(c.r, c.g, c.b)
 
 Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
+convert(::Type{Color}, val::Float64) = Color(val, val, val)
+# Color(val::Colors.RGB{N0f8}) = Color(Float64(val.r), Float64(val.g), Float64(val.b))
 
 unary_functions = [sin, cos, tan, sqrt, exp, log, asin, acos, atan, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round]
 binary_functions = [+, -, *, /, ^, atan, mod, rem, fld, cld, ceil, floor, round, max, min]
