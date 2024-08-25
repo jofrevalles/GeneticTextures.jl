@@ -67,6 +67,12 @@ Here are some examples of textures generated with GeneticTextures.jl:
     <img src="./images/examples2.png" alt="Examples" style="display: inline-block; margin: 0 5px;" />
 </div>
 
+## Benchmarks
+We also benchmarked the performance of the different function backends available in GeneticTextures.jl.
+<div style="text-align: center;">
+    <img src="combined_performance_analysis_compared_minimum.png" alt="Benchmarks" style="display: inline-block; margin: 0 5px;" />
+</div>
+
 ## Acknowledgments
 
 GeneticTextures.jl makes use of the following third-party packages:
