@@ -1,5 +1,7 @@
+import Base: sin, cos, tan, +, -, *, /, ^, sqrt, exp, log, abs, atan, asin, acos, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round, max, min
 using Base
 using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, broadcasted
+using Colors
 
 # TODO: Consider changing the name of Color, since it can conflict with Images.jl and Colors.jl
 mutable struct Color{T<:Number} <: AbstractArray{T, 1}
@@ -12,6 +14,8 @@ function Color(v::AbstractVector{T}) where {T<:Number}
     length(v) == 3 || throw(ArgumentError("Vector must have exactly 3 elements"))
     return Color(v[1], v[2], v[3])
 end
+
+Color(n::Number) = Color(n, n, n)
 
 red(c::Color) = c.r
 green(c::Color) = c.g
@@ -93,7 +97,37 @@ function Base.show(io::IO, c::Color)
     print(io, "Color(", round(c.r, digits=2), ", ", round(c.g, digits=2), ", ", round(c.b, digits=2), ")")
 end
 
-using Colors
-Colors.RGB(c::GeneticTextures.Color) = RGB(c.r, c.g, c.b)
+Colors.RGB(c::Color) = RGB(c.r, c.g, c.b)
 
 Color(val::Colors.RGB) = Color(val.r, val.g, val.b)
+convert(::Type{Color}, val::Float64) = Color(val, val, val)
+# Color(val::Colors.RGB{N0f8}) = Color(Float64(val.r), Float64(val.g), Float64(val.b))
+
+unary_functions = [sin, cos, tan, sqrt, exp, log, asin, acos, atan, sinh, cosh, tanh, sech, csch, coth, asec, acsc, acot, sec, csc, cot, mod, rem, fld, cld, ceil, floor, round]
+binary_functions = [+, -, *, /, ^, atan, mod, rem, fld, cld, ceil, floor, round, max, min]
+
+# Automatically define methods
+for func in unary_functions
+    func = Symbol(func)
+    @eval begin
+        ($func)(c::Color) = Base.broadcast($func, c)
+    end
+end
+
+for func in binary_functions
+    func = Symbol(func)  # Get the function name symbol
+
+    @eval begin
+        ($func)(c1::Color, c2::Color) =  Base.broadcast($func, c1, c2)
+        ($func)(c::Color, x::Number) = Base.broadcast($func, c, x)
+        ($func)(x::Number, c::Color) = Base.broadcast($func, x, c)
+    end
+end
+
+Base.isless(x::Number, y::Color) = isless(x, sum([y.r, y.g, y.b])/3.)
+Base.isless(x::Color, y::Number) = isless(sum([x.r, x.g, x.b])/3., y)
+Base.isless(x::Color, y::Color) = isless(sum([x.r, x.g, x.b])/3., sum([y.r, y.g, y.b])/3.)
+
+Base.isequal(x::Color, y::Color) = isequal(x.r, y.r) && isequal(x.g, y.g) && isequal(x.b, y.b)
+Base.isequal(x::Color, y::Number) = isequal(x.r, y) && isequal(x.g, y) && isequal(x.b, y)
+Base.isequal(x::Number, y::Color) = isequal(x, y.r) && isequal(x, y.g) && isequal(x, y.b)

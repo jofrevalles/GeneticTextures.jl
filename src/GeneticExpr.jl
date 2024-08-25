@@ -1,14 +1,14 @@
 using Base: show
 
-struct CustomExpr
+struct GeneticExpr
     expr::Expr
 end
 
-function CustomExpr(x::Union{Number, Symbol, Color})
+function GeneticExpr(x::Union{Number, Symbol, Color})
     return x
 end
 
-function Base.show(io::IO, c_expr::CustomExpr)
+function Base.show(io::IO, c_expr::GeneticExpr)
     function short_expr(expr)
         if expr.head == :call && length(expr.args) > 0
             new_args = Any[]
