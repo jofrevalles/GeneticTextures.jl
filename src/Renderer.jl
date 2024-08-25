@@ -75,12 +75,40 @@ function save_image_and_expr(img::Matrix{T}, genetic_expr::GeneticExpr; folder =
     println("Expression saved to: $expr_file")
 end
 
-function generate_image_basic(func, width::Int, height::Int; clean = true)
+# TODO: Fix this if F0 isa Matrix{RGB{N0f8}}
+function determine_type(ge::GeneticExpr)
+    # Initialize flags for detected types
+    is_color = false
+    is_complex = false
+
+    expr = ge.expr
+
+    if expr isa Symbol
+        return (false, false)
+
+    elseif expr isa Expr
+        # Handle potential type-defining function calls or constructors
+        if occursin("Color(", string(expr)) || occursin("rand_color(", string(expr)) || occursin("RGB(", string(expr))
+            is_color = true
+        end
+        if occursin("Complex(", string(expr)) || occursin("imag(", string(expr))
+            is_complex = true
+        end
+    end
+
+    return (is_color, is_complex)
+end
+
+function generate_image_basic(func, possible_types, width::Int, height::Int; clean = true)
     img = Array{RGB{Float64}, 2}(undef, height, width)
+    vars = Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}()
 
     for y in 1:height
         for x in 1:width
-            vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5) # Add more variables if needed, e.g., :t => time
+            # vars = Dict{Symbol, Union{Float64, Matrix{Float64}}}(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5) # Add more variables if needed, e.g., :t => time
+            vars[:x] = (x - 1) / (width - 1) - 0.5
+            vars[:y] = (y - 1) / (height - 1) - 0.5
+
             rgb = invokelatest(func, vars)
 
             if rgb isa Color
@@ -98,12 +126,15 @@ function generate_image_basic(func, width::Int, height::Int; clean = true)
     return img
 end
 
-function generate_image_threaded(func, width::Int, height::Int; clean = true)
+function generate_image_threaded(func, possible_types, width::Int, height::Int; clean = true)
     img = Array{RGB{Float64}, 2}(undef, height, width)
+    vars = Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}()
 
     Threads.@threads for y in 1:height
         for x in 1:width
-            vars = Dict(:x => (x - 1) / (width - 1) - 0.5, :y => (y - 1) / (height - 1) - 0.5) # Add more variables if needed, e.g., :t => time
+            # check if there are concurrent problems here, I am sure there are
+            vars[:x] = (x - 1) / (width - 1) - 0.5
+            vars[:y] = (y - 1) / (height - 1) - 0.5
             rgb = invokelatest(func, vars)
 
             if rgb isa Color
@@ -121,12 +152,12 @@ function generate_image_threaded(func, width::Int, height::Int; clean = true)
     return img
 end
 
-function generate_image_vectorized(func, width::Int, height::Int; clean = true)
+function generate_image_vectorized(func, possible_types, width::Int, height::Int; clean = true)
     x_grid = ((1:width) .- 1) ./ (width - 1) .- 0.5
     y_grid = ((1:height) .- 1) ./ (height - 1) .- 0.5
     X, Y = meshgrid(x_grid, y_grid)
 
-    img = broadcast((x, y) -> invokelatest(func, Dict(:x => x, :y => y)), X, Y)
+    img = broadcast((x, y) -> invokelatest(func, Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}(:x => x, :y => y)), X, Y)
 
     output = Array{RGB{Float64}, 2}(undef, height, width)
 
@@ -139,7 +170,7 @@ function generate_image_vectorized(func, width::Int, height::Int; clean = true)
     return output
 end
 
-function generate_image_vectorized_threaded(func, width::Int, height::Int; clean = true, n_blocks = Threads.nthreads() * 4)
+function generate_image_vectorized_threaded(func, possible_types, width::Int, height::Int; clean = true, n_blocks = Threads.nthreads() * 4)
     x_grid = ((1:width) .- 1) ./ (width - 1) .- 0.5
     y_grid = ((1:height) .- 1) ./ (height - 1) .- 0.5
     X, Y = meshgrid(x_grid, y_grid)
@@ -154,7 +185,7 @@ function generate_image_vectorized_threaded(func, width::Int, height::Int; clean
         Y_block = Y[start_y:end_y, :]
 
         # Vectorize within the block
-        img_block = broadcast((x, y) -> invokelatest(func, Dict(:x => x, :y => y)), X_block, Y_block)
+        img_block = broadcast((x, y) -> invokelatest(func, Dict{Symbol, Union{Float64, possible_types..., Matrix{Union{Float64, Color, ComplexF64}}}}(:x => x, :y => y)), X_block, Y_block)
 
         is_color = [r isa Color for r in img_block]
         img_block[is_color] = RGB.(img_block[is_color])
@@ -176,21 +207,45 @@ global height = 128 # Default height
 generate_image(geneticexpr::Union{Number, Symbol}, width::Int, height::Int; kwargs...) = generate_image(GeneticExpr(geneticexpr), width, height; kwargs...)
 
 # TODO: Allow for complex results, add a complex_func argument
-function generate_image(geneticexpr::GeneticExpr, w::Int, h::Int; clean = true, renderer = :threaded, kwargs...)
+function generate_image(geneticexpr::GeneticExpr, w::Int, h::Int; clean = true, renderer = :basic, kwargs...)
     # TODO: Find a better way to pass these arguments to the function
     global width = w
     global height = h
 
+    # Initialize vals as a vector of matrices with the appropriate type
+    vals = []
+    possible_types = []
+    is_color, is_complex = determine_type(geneticexpr)
+    if is_color
+        push!(vals, Matrix{Color}(undef, height, width))
+
+        if Matrix{Color} ∉ possible_types
+            push!(possible_types, Matrix{Color})
+        end
+    elseif is_complex
+        push!(vals, Matrix{Complex{Float64}}(undef, height, width))
+
+        if Matrix{Complex{Float64}} ∉ possible_types
+            push!(possible_types, Matrix{Complex{Float64}})
+        end
+    else
+        push!(vals, Matrix{Float64}(undef, height, width))
+
+        if Matrix{Float64} ∉ possible_types
+            push!(possible_types, Matrix{Float64})
+        end
+    end
+
     func = compile_expr(geneticexpr, custom_operations, primitives_with_arity, gradient_functions, width, height) # Compile the expression
 
     if renderer == :basic
-        return generate_image_basic(func, width, height; clean = clean)
+        return generate_image_basic(func, possible_types, width, height; clean = clean)
     elseif renderer == :vectorized
-        return generate_image_vectorized(func, width, height; clean = clean)
+        return generate_image_vectorized(func, possible_types, width, height; clean = clean)
     elseif renderer == :threaded
-        return generate_image_threaded(func, width, height; clean = clean)
+        return generate_image_threaded(func, possible_types, width, height; clean = clean)
     elseif renderer == :vectorized_threaded
-        return generate_image_vectorized_threaded(func, width, height; clean = clean, kwargs...)
+        return generate_image_vectorized_threaded(func, possible_types, width, height; clean = clean, kwargs...)
     else
         error("Invalid renderer: $renderer")
     end
